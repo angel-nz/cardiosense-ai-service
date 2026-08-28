@@ -1,0 +1,114 @@
+{
+  "candidates": [
+    {
+      "name": "RandomForest+SMOTE",
+      "cv_pr_auc": 0.31560507289891554,
+      "hyperparameters": {
+        "clf__max_depth": 10,
+        "clf__min_samples_split": 5,
+        "clf__n_estimators": 200
+      },
+      "uses_smote": true,
+      "validation_metrics": {
+        "roc_auc": 0.6741962014421514,
+        "pr_auc": 0.2565931283520986,
+        "precision": 0.2556053811659193,
+        "recall": 0.5876288659793815,
+        "f1": 0.35625,
+        "accuracy": 0.6761006289308176,
+        "brier_score": 0.15362306245778456,
+        "threshold_used": 0.35
+      }
+    },
+    {
+      "name": "RandomForest+class_weight_balanced",
+      "cv_pr_auc": 0.3341846965381824,
+      "hyperparameters": {
+        "clf__max_depth": 10,
+        "clf__min_samples_split": 2,
+        "clf__n_estimators": 300
+      },
+      "uses_smote": false,
+      "validation_metrics": {
+        "roc_auc": 0.6599850811927395,
+        "pr_auc": 0.2638193614793327,
+        "precision": 0.21864951768488747,
+        "recall": 0.7010309278350515,
+        "f1": 0.3333333333333333,
+        "accuracy": 0.5723270440251572,
+        "brier_score": 0.17355287920645082,
+        "threshold_used": 0.35
+      }
+    },
+    {
+      "name": "LogisticRegression+SMOTE",
+      "cv_pr_auc": 0.3542463248339492,
+      "hyperparameters": {
+        "max_iter": 2000
+      },
+      "uses_smote": true,
+      "validation_metrics": {
+        "roc_auc": 0.6979132796511296,
+        "pr_auc": 0.27510093301857264,
+        "precision": 0.2154255319148936,
+        "recall": 0.8350515463917526,
+        "f1": 0.34249471458773784,
+        "accuracy": 0.5110062893081762,
+        "brier_score": 0.2161144402403384,
+        "threshold_used": 0.35
+      }
+    },
+    {
+      "name": "HistGradientBoosting+SMOTE",
+      "cv_pr_auc": 0.28891942926968356,
+      "hyperparameters": {},
+      "uses_smote": true,
+      "validation_metrics": {
+        "roc_auc": 0.6452384140160282,
+        "pr_auc": 0.24338950660000025,
+        "precision": 0.25396825396825395,
+        "recall": 0.32989690721649484,
+        "f1": 0.28699551569506726,
+        "accuracy": 0.75,
+        "brier_score": 0.1442555325624517,
+        "threshold_used": 0.35
+      }
+    }
+  ],
+  "selected_model": "LogisticRegression+SMOTE",
+  "selection_metric": "PR-AUC (validation) -> ROC-AUC -> Recall -> Brier -> simplicity",
+  "test_metrics": {
+    "roc_auc": 0.6948302469135803,
+    "pr_auc": 0.3419928283981437,
+    "precision": 0.4523809523809524,
+    "recall": 0.19791666666666666,
+    "f1": 0.2753623188405797,
+    "accuracy": 0.8427672955974843,
+    "brier_score": 0.11807720685563633,
+    "threshold_used": 0.35,
+    "calibration_curve": {
+      "mean_predicted_prob": [
+        0.05963740843734812,
+        0.1448987269406371,
+        0.2456808195023511,
+        0.3395844456531481,
+        0.4472033826762289,
+        0.5386563694961991,
+        0.626930373357364,
+        0.7774729058755596
+      ],
+      "fraction_of_positives": [
+        0.07586206896551724,
+        0.16751269035532995,
+        0.20512820512820512,
+        0.2727272727272727,
+        0.3888888888888889,
+        0.4,
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "roc_auc_target_0_80_met": false,
+  "anomaly_rate_on_test": 0.0660377358490566
+}

@@ -1,0 +1,124 @@
+{
+  "model_name": "Skorp",
+  "model_version": "Skorp-Beta-0.1",
+  "dataset": "framingham.csv (user-provided)",
+  "dataset_hash_sha256": "2c0e57dc0361b420becf1facec0a054af06c420eae0ae2faf0fdc8591fadb018",
+  "dataset_shape_raw": [
+    4240,
+    16
+  ],
+  "target": "TenYearCHD",
+  "features": [
+    "male",
+    "age",
+    "currentSmoker",
+    "cigsPerDay",
+    "BPMeds",
+    "diabetes",
+    "totChol",
+    "sysBP",
+    "diaBP",
+    "BMI",
+    "heartRate",
+    "glucose"
+  ],
+  "excluded_features": [
+    "education",
+    "prevalentStroke",
+    "prevalentHyp"
+  ],
+  "missing_values_processed_columns": {
+    "male": 0,
+    "age": 0,
+    "currentSmoker": 0,
+    "cigsPerDay": 29,
+    "BPMeds": 53,
+    "diabetes": 0,
+    "totChol": 50,
+    "sysBP": 0,
+    "diaBP": 0,
+    "BMI": 19,
+    "heartRate": 1,
+    "glucose": 388
+  },
+  "train_size": 2968,
+  "validation_size": 636,
+  "test_size": 636,
+  "class_distribution": {
+    "train": {
+      "0": 2517,
+      "1": 451
+    },
+    "validation": {
+      "0": 539,
+      "1": 97
+    },
+    "test": {
+      "0": 540,
+      "1": 96
+    }
+  },
+  "random_state": 42,
+  "smote_config": {
+    "random_state": 42,
+    "k_neighbors": 5,
+    "applied_to": "train_only_per_cv_fold"
+  },
+  "selected_algorithm": "LogisticRegression+SMOTE",
+  "selected_hyperparameters": {
+    "max_iter": 2000
+  },
+  "selection_metric": "PR-AUC (primary), ROC-AUC/Recall/Brier as tie-breakers",
+  "metrics": {
+    "roc_auc": 0.6948302469135803,
+    "pr_auc": 0.3419928283981437,
+    "precision": 0.4523809523809524,
+    "recall": 0.19791666666666666,
+    "f1": 0.2753623188405797,
+    "accuracy": 0.8427672955974843,
+    "brier_score": 0.11807720685563633,
+    "threshold_used": 0.35,
+    "calibration_curve": {
+      "mean_predicted_prob": [
+        0.05963740843734812,
+        0.1448987269406371,
+        0.2456808195023511,
+        0.3395844456531481,
+        0.4472033826762289,
+        0.5386563694961991,
+        0.626930373357364,
+        0.7774729058755596
+      ],
+      "fraction_of_positives": [
+        0.07586206896551724,
+        0.16751269035532995,
+        0.20512820512820512,
+        0.2727272727272727,
+        0.3888888888888889,
+        0.4,
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "calibration_method": "CalibratedClassifierCV(method='sigmoid', cv=StratifiedKFold(5))",
+  "risk_thresholds": {
+    "low_max": 0.2,
+    "moderate_max": 0.35
+  },
+  "anomaly_algorithm": "IsolationForest",
+  "anomaly_configuration": {
+    "n_estimators": 200,
+    "contamination": 0.05,
+    "random_state": 42
+  },
+  "anomaly_semantics": "decision_function() < 0 => is_anomaly=true (more negative = more atypical)",
+  "training_timestamp": "2026-08-17T18:47:38.986896+00:00",
+  "python_version": "3.14.7",
+  "dependency_versions": {
+    "pandas": "3.0.5",
+    "numpy": "2.5.2",
+    "scikit-learn": "1.9.0",
+    "imbalanced-learn": "0.14.2"
+  }
+}

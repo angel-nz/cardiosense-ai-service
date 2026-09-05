@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
 
 # Virtual environments
 .venv/
@@ -59,3 +60,10 @@ logs/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Secrets / credentials
+*.pem
+*.key
+*.crt
+credentials.json
+service-account.json

@@ -28,10 +28,13 @@ except ModelLoadError as exc:
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
+    loaded = _predictor is not None and _predictor.loaded
     return HealthResponse(
         status="ok",
-        model_loaded=_predictor is not None and _predictor.loaded,
+        model_loaded=loaded,
         model_version=MODEL_VERSION,
+        eligible_age_range=_predictor.eligible_age_range if loaded else None,
+        training_age_range=_predictor.training_age_range if loaded else None,
     )
 
 

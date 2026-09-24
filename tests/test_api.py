@@ -91,3 +91,19 @@ def test_t11_determinism():
     r2 = client.post("/predict", json=VALID_PAYLOAD, headers=HEADERS).json()
     assert r1["risk_score"] == r2["risk_score"]
     assert r1["anomaly_score"] == r2["anomaly_score"]
+
+
+def test_t12_health_exposes_age_eligibility():
+    body = client.get("/health").json()
+    assert body["model_loaded"] is True
+    assert body["model_version"] == "Skorp-Beta-0.1"
+    assert body["eligible_age_range"] == {"min": 32, "max": 70}
+    assert body["training_age_range"] == {"min": 32, "max": 70}
+
+
+def test_t13_sanity_range_is_independent_of_eligibility():
+    # The AI keeps its 18-120 input sanity validation; model eligibility (32-70)
+    # is enforced by the backend before calling /predict, not by this schema.
+    for age, expected in ((25, 200), (80, 200), (17, 422), (121, 422)):
+        r = client.post("/predict", json={**VALID_PAYLOAD, "age": age}, headers=HEADERS)
+        assert r.status_code == expected, (age, r.status_code)

@@ -1,4 +1,4 @@
-from typing import Dict, Literal
+from typing import Dict, Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -30,7 +30,20 @@ class PredictResponse(BaseModel):
     model_version: str
 
 
+class AgeRange(BaseModel):
+    min: int
+    max: int
+
+
 class HealthResponse(BaseModel):
     status: Literal["ok"]
     model_loaded: bool
     model_version: str
+    # U8.6B — model-owned age support. eligible_age_range is the range the
+    # current model is allowed to predict for (chosen = observed training
+    # support); training_age_range is what the training data actually
+    # contained. Neither is a clinically validated range. Independent of the
+    # 18-120 input sanity validation on PredictRequest.age. None if the model
+    # is not loaded or its metadata lacks the contract.
+    eligible_age_range: Optional[AgeRange] = None
+    training_age_range: Optional[AgeRange] = None

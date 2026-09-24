@@ -109,6 +109,47 @@ def select_best(rows):
     return sorted(rows, key=key, reverse=True)[0]
 
 
+# U8.6C-FIX-1 — pure, independently-testable (no I/O, no model fitting) so
+# META-01..05 can exercise this logic directly without running the full
+# training pipeline (see tests/test_metadata_eligibility.py).
+#
+# Population used: the FULL processed age column (`df["age"]`, i.e. all rows
+# used to build `X` — train + validation + test combined), taken BEFORE the
+# train/validation/test split. This matches the population the already
+# checked-in metadata.json's own basis text refers to ("the training
+# dataset (framingham.csv)"), and is intentionally NOT restricted to
+# X_train alone: on the current dataset, X_train's own age range happens to
+# already be 32-70, but the validation (34-69) and test (33-69) splits are
+# each narrower — confirming these can genuinely diverge, so "the training
+# dataset" here means the whole population this model version was built
+# and evaluated against, not just the exact fold passed to `.fit()`.
+#
+# CURRENT Skorp-Beta-0.1 policy (explicit, not silent): eligible_age_range
+# is set EQUAL to the observed training_age_range — no independent 32/70
+# constant. A future retraining on a genuinely different dataset will
+# therefore produce a different (still internally consistent) eligible
+# range automatically — this reflects observed model support for THAT
+# training run, never a claim of clinical/medical validation. A future
+# model version may adopt an explicitly different eligibility policy in
+# code; this function only implements "eligible == observed training
+# support", the policy already established in U8.6A/B for Skorp-Beta-0.1.
+def compute_eligibility_metadata(age_series: pd.Series) -> dict:
+    age_min = int(age_series.min())
+    age_max = int(age_series.max())
+    training_age_range = {"min": age_min, "max": age_max}
+    eligible_age_range = dict(training_age_range)  # explicit copy — see docstring above
+    eligible_age_range_basis = (
+        "Chosen to match the ages observed in the training dataset "
+        f"(framingham.csv: {age_min}-{age_max} inclusive). Observed model age "
+        "support only; not a clinically validated or medically established range."
+    )
+    return {
+        "training_age_range": training_age_range,
+        "eligible_age_range": eligible_age_range,
+        "eligible_age_range_basis": eligible_age_range_basis,
+    }
+
+
 def main():
     print(f"=== Training {MODEL_VERSION} ===")
     if not RAW_CSV.exists():
@@ -360,6 +401,7 @@ def main():
         "target": TARGET,
         "features": FEATURES,
         "excluded_features": EXCLUDED_FEATURES,
+        **compute_eligibility_metadata(X["age"]),
         "missing_values_processed_columns": {k: int(v) for k, v in missing_report.items()},
         "train_size": sizes["train"],
         "validation_size": sizes["validation"],

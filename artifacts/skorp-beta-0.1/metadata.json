@@ -27,6 +27,15 @@
     "prevalentStroke",
     "prevalentHyp"
   ],
+  "training_age_range": {
+    "min": 32,
+    "max": 70
+  },
+  "eligible_age_range": {
+    "min": 32,
+    "max": 70
+  },
+  "eligible_age_range_basis": "Chosen to match the ages observed in the training dataset (framingham.csv: 32-70 inclusive). Observed model age support only; not a clinically validated or medically established range.",
   "missing_values_processed_columns": {
     "male": 0,
     "age": 0,

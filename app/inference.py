@@ -16,6 +16,17 @@ FEATURES = [
 ]
 
 
+def _read_age_range(metadata: dict, key: str) -> dict | None:
+    """Return {'min': int, 'max': int} from metadata[key], or None if absent/malformed."""
+    value = metadata.get(key)
+    if not isinstance(value, dict):
+        return None
+    lo, hi = value.get("min"), value.get("max")
+    if not (isinstance(lo, int) and isinstance(hi, int)) or isinstance(lo, bool) or isinstance(hi, bool) or lo > hi:
+        return None
+    return {"min": lo, "max": hi}
+
+
 class ModelLoadError(RuntimeError):
     pass
 
@@ -35,6 +46,9 @@ class SkorpPredictor:
         self.feature_importance: dict[str, float] = {}
         self.risk_thresholds = {"low_max": 0.20, "moderate_max": 0.35}
         self.metadata: dict = {}
+        # U8.6B — model-owned age support contract (see metadata.json).
+        self.training_age_range: dict | None = None
+        self.eligible_age_range: dict | None = None
         self._load()
 
     def _load(self):
@@ -73,6 +87,11 @@ class SkorpPredictor:
             self.feature_importance = {}
         else:
             self.feature_importance = {k: float(v) for k, v in top6.items()}
+
+        self.training_age_range = _read_age_range(self.metadata, "training_age_range")
+        self.eligible_age_range = _read_age_range(self.metadata, "eligible_age_range")
+        if self.eligible_age_range is None:
+            logger.warning("metadata.json has no valid eligible_age_range — consumers must treat eligibility as unknown")
 
         self.loaded = True
         logger.info("Skorp-Beta-0.1 artifacts loaded from %s", self.artifact_dir)

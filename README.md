@@ -99,3 +99,44 @@ train-only, calibración registrada, top-6 suma 100%).
 
 - `buildFeatures()` en `aiClient.ts` envía siempre `sex: 0` (comentario del propio código: "Added in health record v2; default for now") — Skorp recibe correctamente ese valor y lo mapea a `male=0`, pero esto significa que **todas** las predicciones reales del backend ignoran el sexo real del paciente hasta que ese campo se agregue al modelo de Health Record. No es un bug de Skorp; es una limitación aguas arriba, documentada aquí y no corregida..
 - ROC-AUC objetivo (≥0.80) — ver `metrics.json`/`REPORT.md` para el resultado real obtenido; no se manipuló el experimento para alcanzarlo artificialmente.
+
+## NEW R personalization engine (R-BPBC-1)
+
+`app/personalization/` holds the pure, deterministic patient-personalization
+engine (`personalize(current, evidence, evaluate, thresholds)`), with every
+frozen constant in `app/personalization/constants.py`. Since R4D it is reachable
+through the OPTIONAL `personalization` block of `POST /predict` (see below).
+
+- Only the four features sysBP, diaBP, totChol, glucose are conditioned on the
+  patient's own prior states (local-level filter, burst information cap); all
+  other inputs stay at the current anchor values.
+- `r_k` are versioned observation-variability proxies (visit-to-visit BP SD,
+  EFLM within-subject lab CV), not pure instrument measurement error.
+- gamma is a deterministic reliability control derived from the patient's
+  persisted **global** prediction history. It is not a probability, a
+  confidence, a calibration score or an outcome likelihood.
+- Historical individualized/final scores never feed back into personalization.
+- Any personalization failure returns the exact global probability with a
+  GLOBAL_* status and a machine-readable reason.
+- No claim of improved clinical accuracy is made.
+
+Run its tests: `python -m pytest -q tests/test_personalization.py`
+
+### R4D - optional `personalization` block on `POST /predict`
+
+- **Mode A (legacy):** the 12 core fields only. Response is byte-identical to
+  before; the `personalization` key is ABSENT (not null).
+- **Mode B (NEW-R):** the 12 core fields + `personalization` (R4B wire shape:
+  `version`, `raw_counts`, `units`). The 12 core fields are validated exactly
+  as before (422 unchanged). Top-level fields stay the GLOBAL result; a
+  `personalization` block is appended with `status` (exact Prisma enum),
+  `reason`, `final_risk_score` (4 dp), `final_risk_level` (from the unrounded
+  value) and non-clinical diagnostics.
+- A malformed block, an unsupported version or any unknown key (strict
+  allowlist, so identity-like keys are rejected) returns HTTP 200 with the
+  global result and `GLOBAL_ERROR_FALLBACK` + a stable reason; never a 422.
+- On every non-`INDIVIDUALIZED` status `final_risk_score == risk_score`.
+- Global failures keep the existing behavior (500 / 503); never a fallback.
+- `anomaly_*`, `feature_importance` and `model_version` stay global.
+
+Run: `python -m pytest -q tests/test_predict_personalization.py`

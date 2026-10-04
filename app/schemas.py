@@ -1,4 +1,4 @@
-from typing import Dict, Literal, Optional
+from typing import Any, Dict, Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -21,6 +21,66 @@ class PredictRequest(BaseModel):
     glucose: float = Field(ge=30, le=500)
 
 
+class PredictWithPersonalizationRequest(PredictRequest):
+    """NEW R (R4D) — /predict request body. The 12 core fields are inherited
+    unchanged from PredictRequest (same strict validation, same 422s).
+
+    `personalization` is OPTIONAL and deliberately untyped at this layer: a
+    malformed / unsupported block must NEVER turn into a 422 — it is parsed
+    by app.personalization.wire and degrades to the GLOBAL result with
+    status GLOBAL_ERROR_FALLBACK and a stable reason. Omitting the key keeps
+    the legacy (GLOBAL-only) contract byte-identical. An explicit `null` is a
+    NEW-R request with an invalid block (INVALID_PAYLOAD)."""
+
+    personalization: Any = Field(
+        default=None,
+        description=(
+            "Optional NEW-R personalization evidence (R-BPBC-1): "
+            "{version, raw_counts{clinical, prediction}, units[{t_days, "
+            "states[{t_days, sysBP, diaBP, totChol, glucose}], pi{score}|null, "
+            "pi_state|null}]}. Unknown keys are rejected (GLOBAL_ERROR_FALLBACK / "
+            "INVALID_PAYLOAD). Contains no patient identity."
+        ),
+    )
+
+
+class PersonalizationFeatureDiagnostics(BaseModel):
+    z: float
+    s: float
+    K_anchor: float
+    K_anchor_prime: float
+
+
+class PersonalizationBlock(BaseModel):
+    """NEW R (R4D) — appended ONLY when the request carried `personalization`.
+    The top-level response fields stay the GLOBAL result. On every non-
+    INDIVIDUALIZED status final_risk_score == top-level risk_score."""
+
+    version: str
+    status: Literal[
+        "INDIVIDUALIZED",
+        "GLOBAL_INSUFFICIENT_HISTORY",
+        "GLOBAL_INCOMPATIBLE_HISTORY",
+        "GLOBAL_ERROR_FALLBACK",
+    ]
+    reason: Optional[str]
+    final_risk_score: float
+    final_risk_level: Literal["low", "moderate", "high"]
+    Q: Optional[float]
+    gamma: Optional[float]
+    delta_logit: Optional[float]
+    raw_adjustment: Optional[float]
+    applied_logit: Optional[float]
+    bounded: Optional[bool]
+    bp_reverted: Optional[bool]
+    sigma_exp: Optional[float]
+    effective_clinical_units: Optional[int]
+    pi_units: Optional[int]
+    comparable_transitions: Optional[int]
+    excluded_transitions: Optional[Dict[str, int]]
+    per_feature: Optional[Dict[str, PersonalizationFeatureDiagnostics]]
+
+
 class PredictResponse(BaseModel):
     risk_score: float
     risk_level: Literal["low", "moderate", "high"]
@@ -28,6 +88,9 @@ class PredictResponse(BaseModel):
     is_anomaly: bool
     feature_importance: Dict[str, float]
     model_version: str
+    # NEW R (R4D): present ONLY for NEW-R requests (the route serializes
+    # with exclude_unset, so legacy responses never contain this key).
+    personalization: Optional[PersonalizationBlock] = None
 
 
 class AgeRange(BaseModel):

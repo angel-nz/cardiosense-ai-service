@@ -1,4 +1,5 @@
 import json
+import math
 import logging
 
 import joblib
@@ -97,29 +98,54 @@ class SkorpPredictor:
         logger.info("Skorp-Beta-0.1 artifacts loaded from %s", self.artifact_dir)
 
     def risk_level(self, score: float) -> str:
+        """Canonical CardioSense classification of an UNROUNDED probability:
+        LOW < low_max (0.20) <= MODERATE < moderate_max (0.35) <= HIGH.
+        PRE-S threshold gate: a non-finite or out-of-[0, 1] value is a model
+        failure, never a risk level (previously NaN/inf classified as HIGH and
+        negatives as LOW)."""
+        if isinstance(score, bool) or not isinstance(score, (int, float)) or not math.isfinite(score) \
+                or score < 0.0 or score > 1.0:
+            raise ValueError(f"risk score outside the probability domain: {score!r}")
         if score < self.risk_thresholds["low_max"]:
             return "low"
         if score < self.risk_thresholds["moderate_max"]:
             return "moderate"
         return "high"
 
-    def predict(self, req: PredictRequest) -> dict:
-        row = {
-            "male": req.sex,  # sex -> male mapping (0=female,1=male), see report divergence
-            "age": req.age,
-            "currentSmoker": req.currentSmoker,
-            "cigsPerDay": req.cigsPerDay,
-            "BPMeds": req.BPMeds,
-            "diabetes": req.diabetes,
-            "totChol": req.totChol,
-            "sysBP": req.sysBP,
-            "diaBP": req.diaBP,
-            "BMI": req.BMI,
-            "heartRate": req.heartRate,
-            "glucose": req.glucose,
+    @staticmethod
+    def _model_row(features) -> dict:
+        """Request-named features (sex, age, ...) -> training column names."""
+        return {
+            "male": features["sex"],  # sex -> male mapping (0=female,1=male), see report divergence
+            "age": features["age"],
+            "currentSmoker": features["currentSmoker"],
+            "cigsPerDay": features["cigsPerDay"],
+            "BPMeds": features["BPMeds"],
+            "diabetes": features["diabetes"],
+            "totChol": features["totChol"],
+            "sysBP": features["sysBP"],
+            "diaBP": features["diaBP"],
+            "BMI": features["BMI"],
+            "heartRate": features["heartRate"],
+            "glucose": features["glucose"],
         }
-        X = pd.DataFrame([row], columns=FEATURES)
-        X_imp = pd.DataFrame(self.imputer.transform(X), columns=FEATURES)
+
+    def _imputed(self, features) -> pd.DataFrame:
+        X = pd.DataFrame([self._model_row(features)], columns=FEATURES)
+        return pd.DataFrame(self.imputer.transform(X), columns=FEATURES)
+
+    def global_probability_unrounded(self, features) -> float:
+        """NEW R (R4C) — the deployed Skorp classifier's probability, clipped to
+        [0, 1] but NOT rounded. `features` uses the PredictRequest field names.
+        This is the exact value /predict rounds to 4 decimals for risk_score;
+        the personalization engine needs it unrounded. Never derived from a
+        persisted/rounded score."""
+        proba = float(self.classifier.predict_proba(self._imputed(features))[0, 1])
+        return min(max(proba, 0.0), 1.0)
+
+    def predict(self, req: PredictRequest) -> dict:
+        features = req.model_dump()
+        X_imp = self._imputed(features)
 
         proba = float(self.classifier.predict_proba(X_imp)[0, 1])
         risk_score = min(max(proba, 0.0), 1.0)

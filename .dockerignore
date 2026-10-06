@@ -1,0 +1,16 @@
+.git
+.gitignore
+.env
+.env.*
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+tests/
+evidence/
+data/
+artifacts/skorp-beta-0.1/
+scripts/train.py
+scripts/train_pre_t_a.py
+scripts/close_pre_t_a_fix1.py

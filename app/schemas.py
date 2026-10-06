@@ -1,11 +1,13 @@
 from typing import Any, Dict, Literal, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PredictRequest(BaseModel):
     """Matches the exact payload built by backend/src/lib/aiClient.ts
     (buildFeatures). Field names/casing are dictated by that function, not
     by this service — do not rename without updating aiClient.ts too."""
+
+    model_config = ConfigDict(extra="forbid")
 
     age: int = Field(ge=18, le=120)
     sex: int = Field(ge=0, le=1, description="0=female, 1=male (backend semantics)")
@@ -17,12 +19,11 @@ class PredictRequest(BaseModel):
     sysBP: float = Field(ge=60, le=300)
     diaBP: float = Field(ge=40, le=200)
     BMI: float = Field(ge=10, le=80)
-    heartRate: int = Field(ge=30, le=250)
     glucose: float = Field(ge=30, le=500)
 
 
 class PredictWithPersonalizationRequest(PredictRequest):
-    """NEW R (R4D) — /predict request body. The 12 core fields are inherited
+    """NEW R (R4D) — /predict request body. The 11 core fields are inherited
     unchanged from PredictRequest (same strict validation, same 422s).
 
     `personalization` is OPTIONAL and deliberately untyped at this layer: a
@@ -35,7 +36,7 @@ class PredictWithPersonalizationRequest(PredictRequest):
     personalization: Any = Field(
         default=None,
         description=(
-            "Optional NEW-R personalization evidence (R-BPBC-1): "
+            "Optional NEW-R personalization evidence (R-BPBC-3): "
             "{version, raw_counts{clinical, prediction}, units[{t_days, "
             "states[{t_days, sysBP, diaBP, totChol, glucose}], pi{score}|null, "
             "pi_state|null}]}. Unknown keys are rejected (GLOBAL_ERROR_FALLBACK / "

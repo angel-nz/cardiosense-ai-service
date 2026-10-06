@@ -1,0 +1,239 @@
+{
+  "features": [
+    {
+      "feature": "male",
+      "coefficients_by_fold": [
+        0.28830501232429095,
+        0.30039604008147464,
+        0.29865283378903323,
+        0.23553504940224138,
+        0.2679035588039852
+      ],
+      "mean_coefficient": 0.27815849888020516,
+      "std_coefficient": 0.024246236732622134,
+      "min": 0.23553504940224138,
+      "max": 0.30039604008147464,
+      "sign_counts": {
+        "positive": 5,
+        "negative": 0,
+        "zero": 0
+      },
+      "sign_consistency_fraction": 1.0,
+      "same_sign_all_folds": true
+    },
+    {
+      "feature": "age",
+      "coefficients_by_fold": [
+        0.5587202519735169,
+        0.6309194577594139,
+        0.5867995386916098,
+        0.6115390219253078,
+        0.599154304028165
+      ],
+      "mean_coefficient": 0.5974265148756027,
+      "std_coefficient": 0.024228218028829372,
+      "min": 0.5587202519735169,
+      "max": 0.6309194577594139,
+      "sign_counts": {
+        "positive": 5,
+        "negative": 0,
+        "zero": 0
+      },
+      "sign_consistency_fraction": 1.0,
+      "same_sign_all_folds": true
+    },
+    {
+      "feature": "currentSmoker",
+      "coefficients_by_fold": [
+        -0.051973315578820366,
+        0.03456343107773328,
+        -0.019679095123579543,
+        0.03896875549306555,
+        -0.009981383778943788
+      ],
+      "mean_coefficient": -0.0016203215821089744,
+      "std_coefficient": 0.03431672420752718,
+      "min": -0.051973315578820366,
+      "max": 0.03896875549306555,
+      "sign_counts": {
+        "positive": 2,
+        "negative": 3,
+        "zero": 0
+      },
+      "sign_consistency_fraction": 0.6,
+      "same_sign_all_folds": false
+    },
+    {
+      "feature": "cigsPerDay",
+      "coefficients_by_fold": [
+        0.16797367209464784,
+        0.1730308610036829,
+        0.20651445526520107,
+        0.22381122983265397,
+        0.19663391240014993
+      ],
+      "mean_coefficient": 0.19359282611926715,
+      "std_coefficient": 0.020825484824559187,
+      "min": 0.16797367209464784,
+      "max": 0.22381122983265397,
+      "sign_counts": {
+        "positive": 5,
+        "negative": 0,
+        "zero": 0
+      },
+      "sign_consistency_fraction": 1.0,
+      "same_sign_all_folds": true
+    },
+    {
+      "feature": "BPMeds",
+      "coefficients_by_fold": [
+        0.10488221424543655,
+        0.11338305651750183,
+        0.10070482971091577,
+        0.08999852504277361,
+        0.07754096327861142
+      ],
+      "mean_coefficient": 0.09730191775904784,
+      "std_coefficient": 0.012421582793576521,
+      "min": 0.07754096327861142,
+      "max": 0.11338305651750183,
+      "sign_counts": {
+        "positive": 5,
+        "negative": 0,
+        "zero": 0
+      },
+      "sign_consistency_fraction": 1.0,
+      "same_sign_all_folds": true
+    },
+    {
+      "feature": "diabetes",
+      "coefficients_by_fold": [
+        0.09908428611261845,
+        0.03181046996622801,
+        0.11605002380888188,
+        0.1315732280272093,
+        0.08371134778424714
+      ],
+      "mean_coefficient": 0.09244587113983696,
+      "std_coefficient": 0.03430777873106936,
+      "min": 0.03181046996622801,
+      "max": 0.1315732280272093,
+      "sign_counts": {
+        "positive": 5,
+        "negative": 0,
+        "zero": 0
+      },
+      "sign_consistency_fraction": 1.0,
+      "same_sign_all_folds": true
+    },
+    {
+      "feature": "totChol",
+      "coefficients_by_fold": [
+        0.1542869295716508,
+        0.13908124706704791,
+        0.20526284953429202,
+        0.18902011203990246,
+        0.18452042700973834
+      ],
+      "mean_coefficient": 0.17443431304452633,
+      "std_coefficient": 0.02416869969263806,
+      "min": 0.13908124706704791,
+      "max": 0.20526284953429202,
+      "sign_counts": {
+        "positive": 5,
+        "negative": 0,
+        "zero": 0
+      },
+      "sign_consistency_fraction": 1.0,
+      "same_sign_all_folds": true
+    },
+    {
+      "feature": "sysBP",
+      "coefficients_by_fold": [
+        0.26475819685021107,
+        0.2001412782539494,
+        0.37150945394048585,
+        0.22610160171599752,
+        0.35246875104625136
+      ],
+      "mean_coefficient": 0.2829958563613791,
+      "std_coefficient": 0.06796409287520933,
+      "min": 0.2001412782539494,
+      "max": 0.37150945394048585,
+      "sign_counts": {
+        "positive": 5,
+        "negative": 0,
+        "zero": 0
+      },
+      "sign_consistency_fraction": 1.0,
+      "same_sign_all_folds": true
+    },
+    {
+      "feature": "diaBP",
+      "coefficients_by_fold": [
+        0.1031490063618086,
+        0.13454868814131393,
+        -0.03491830420547991,
+        0.10853283808034873,
+        0.051744157541719626
+      ],
+      "mean_coefficient": 0.0726112771839422,
+      "std_coefficient": 0.060095260832489096,
+      "min": -0.03491830420547991,
+      "max": 0.13454868814131393,
+      "sign_counts": {
+        "positive": 4,
+        "negative": 1,
+        "zero": 0
+      },
+      "sign_consistency_fraction": 0.8,
+      "same_sign_all_folds": false
+    },
+    {
+      "feature": "BMI",
+      "coefficients_by_fold": [
+        0.005269933425724973,
+        -0.02062059280770959,
+        -0.012589459546358055,
+        0.03624198094563297,
+        -0.07245579372706934
+      ],
+      "mean_coefficient": -0.012830786341955808,
+      "std_coefficient": 0.03564169854100943,
+      "min": -0.07245579372706934,
+      "max": 0.03624198094563297,
+      "sign_counts": {
+        "positive": 2,
+        "negative": 3,
+        "zero": 0
+      },
+      "sign_consistency_fraction": 0.6,
+      "same_sign_all_folds": false
+    },
+    {
+      "feature": "glucose",
+      "coefficients_by_fold": [
+        0.05721163754094849,
+        0.13534171752686358,
+        0.06426391062474418,
+        0.025573255361898764,
+        0.0824258374561171
+      ],
+      "mean_coefficient": 0.07296327170211442,
+      "std_coefficient": 0.03619452214020119,
+      "min": 0.025573255361898764,
+      "max": 0.13534171752686358,
+      "sign_counts": {
+        "positive": 5,
+        "negative": 0,
+        "zero": 0
+      },
+      "sign_consistency_fraction": 1.0,
+      "same_sign_all_folds": true
+    }
+  ],
+  "fold_order": "calibrated_classifiers_ order; fold indices 1 through 5",
+  "std_definition": "Population standard deviation, ddof=0",
+  "interpretation": "Coefficients of the internal LogisticRegression estimators in each fold-specific standardized space. The prediction model is the calibrated ensemble. These coefficients are not permutation importance, not percentages, and do not imply causality.",
+  "sign_consistency_definition": "Largest positive/negative/zero sign count divided by five; exact zero is its own category."
+}

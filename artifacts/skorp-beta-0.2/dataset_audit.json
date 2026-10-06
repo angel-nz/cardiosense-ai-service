@@ -1,0 +1,78 @@
+{
+  "raw_shape": [
+    5905,
+    16
+  ],
+  "dataset_hash_sha256": "533fe2625b5aace28c21714cb9ba55ec35cba11177c31ad5d7a20c79101c8e76",
+  "duplicate_raw_rows": 0,
+  "duplicate_feature_rows": 0,
+  "cross_split_feature_duplicates": {
+    "train_test": 0,
+    "train_validation": 0,
+    "validation_test": 0
+  },
+  "subject_identifiers_available": false,
+  "limitation": "Subject-level leakage cannot be independently ruled out: no subject identifiers are available.",
+  "missing": {
+    "male": 0,
+    "age": 0,
+    "currentSmoker": 0,
+    "cigsPerDay": 42,
+    "BPMeds": 176,
+    "diabetes": 0,
+    "totChol": 127,
+    "sysBP": 0,
+    "diaBP": 0,
+    "BMI": 31,
+    "glucose": 629
+  },
+  "ranges": {
+    "male": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "age": {
+      "min": 32.0,
+      "max": 81.0
+    },
+    "currentSmoker": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "cigsPerDay": {
+      "min": 0.0,
+      "max": 90.0
+    },
+    "BPMeds": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "diabetes": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "totChol": {
+      "min": 107.0,
+      "max": 696.0
+    },
+    "sysBP": {
+      "min": 83.5,
+      "max": 295.0
+    },
+    "diaBP": {
+      "min": 48.0,
+      "max": 142.5
+    },
+    "BMI": {
+      "min": 15.33,
+      "max": 56.8
+    },
+    "glucose": {
+      "min": 40.0,
+      "max": 478.0
+    }
+  },
+  "smoker_zero_cigarettes": 0,
+  "nonsmoker_positive_cigarettes": 0,
+  "action": "No rows removed, no clipping; mean imputation fitted on training data only."
+}

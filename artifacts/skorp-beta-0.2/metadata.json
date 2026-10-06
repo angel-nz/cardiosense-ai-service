@@ -1,0 +1,155 @@
+{
+  "model_name": "Skorp",
+  "model_version": "Skorp-Beta-0.2",
+  "features": [
+    "male",
+    "age",
+    "currentSmoker",
+    "cigsPerDay",
+    "BPMeds",
+    "diabetes",
+    "totChol",
+    "sysBP",
+    "diaBP",
+    "BMI",
+    "glucose"
+  ],
+  "target": "TenYearCHD",
+  "dataset_hash_sha256": "533fe2625b5aace28c21714cb9ba55ec35cba11177c31ad5d7a20c79101c8e76",
+  "dataset_shape_raw": [
+    5905,
+    16
+  ],
+  "random_state": 42,
+  "selected_algorithm": "LogisticRegression+SMOTE",
+  "selection": "Family/config fixed before TEST; no candidate search or TEST tuning.",
+  "calibration_method": "CalibratedClassifierCV(method='sigmoid', cv=StratifiedKFold(5, shuffle=True, random_state=42))",
+  "preprocessing": "Classifier accepts raw 11-feature frames; each calibrated estimator owns its imputer/scaler. Separate imputer is for IsolationForest only.",
+  "smote_config": {
+    "random_state": 42,
+    "k_neighbors": 5,
+    "applied_to": "train_only_per_cv_fold"
+  },
+  "anomaly_configuration": {
+    "n_estimators": 200,
+    "contamination": 0.05,
+    "training_population": "TRAIN y==0",
+    "features": [
+      "male",
+      "age",
+      "currentSmoker",
+      "cigsPerDay",
+      "BPMeds",
+      "diabetes",
+      "totChol",
+      "sysBP",
+      "diaBP",
+      "BMI",
+      "glucose"
+    ]
+  },
+  "training_age_range": {
+    "min": 32,
+    "max": 81
+  },
+  "eligible_age_range": {
+    "min": 32,
+    "max": 81
+  },
+  "eligible_age_range_basis": "Observed dataset support only, not clinical validation.",
+  "split_sizes": {
+    "train": 4133,
+    "validation": 886,
+    "test": 886
+  },
+  "class_distribution": {
+    "train": {
+      "0": 3381,
+      "1": 752
+    },
+    "validation": {
+      "0": 724,
+      "1": 162
+    },
+    "test": {
+      "0": 725,
+      "1": 161
+    }
+  },
+  "python_version": "3.12.14",
+  "dependency_versions": {
+    "numpy": "2.5.3",
+    "pandas": "3.0.1",
+    "sklearn": "1.9.1",
+    "imblearn": "0.14.2",
+    "joblib": "1.6.0"
+  },
+  "training_timestamp": "2026-10-05T00:17:58.718431+00:00",
+  "deployment_status": "offline candidate only",
+  "excluded_features": [
+    "education",
+    "prevalentStroke",
+    "prevalentHyp"
+  ],
+  "missing_values_processed_columns": {
+    "male": 0,
+    "age": 0,
+    "currentSmoker": 0,
+    "cigsPerDay": 42,
+    "BPMeds": 176,
+    "diabetes": 0,
+    "totChol": 127,
+    "sysBP": 0,
+    "diaBP": 0,
+    "BMI": 31,
+    "glucose": 629
+  },
+  "selected_hyperparameters": {
+    "max_iter": 2000,
+    "random_state": 42
+  },
+  "risk_thresholds": {
+    "low_max": 0.2,
+    "moderate_max": 0.35
+  },
+  "metrics": {
+    "roc_auc": 0.7308460055686443,
+    "pr_auc": 0.35402258185860047,
+    "precision": 0.43478260869565216,
+    "recall": 0.2484472049689441,
+    "f1": 0.31620553359683795,
+    "accuracy": 0.8047404063205418,
+    "brier_score": 0.13470880348792705,
+    "sensitivity": 0.2484472049689441,
+    "specificity": 0.9282758620689655,
+    "ppv": 0.43478260869565216,
+    "npv": 0.8476070528967254,
+    "threshold_used": 0.35,
+    "tn": 673,
+    "fp": 52,
+    "fn": 121,
+    "tp": 40,
+    "calibration_curve": {
+      "mean_predicted_prob": [
+        0.06735086203597486,
+        0.14607384503882292,
+        0.24651482984879025,
+        0.3450266658191178,
+        0.44108036683569274,
+        0.5452018369212034,
+        0.6318111266220471,
+        0.7454231321504095
+      ],
+      "fraction_of_positives": [
+        0.05660377358490566,
+        0.13580246913580246,
+        0.2795031055900621,
+        0.40476190476190477,
+        0.43333333333333335,
+        0.5,
+        0.42857142857142855,
+        0.3333333333333333
+      ]
+    }
+  }
+}

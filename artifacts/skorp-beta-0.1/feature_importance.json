@@ -1,11 +1,11 @@
 {
   "top_6": {
-    "age": 0.3925,
-    "sysBP": 0.2232,
-    "cigsPerDay": 0.1643,
-    "male": 0.1176,
-    "glucose": 0.0644,
-    "diaBP": 0.038
+    "age": 50.97,
+    "male": 16.03,
+    "cigsPerDay": 14.26,
+    "sysBP": 13.25,
+    "diabetes": 2.87,
+    "diaBP": 2.62
   },
   "note": null,
   "method": "permutation_importance",

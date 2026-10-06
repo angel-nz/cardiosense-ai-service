@@ -30,7 +30,7 @@ try:
     _predictor = SkorpPredictor()
 except ModelLoadError as exc:
     _load_error = str(exc)
-    logger.critical("Skorp-Beta-0.1 failed to load at startup: %s", _load_error)
+    logger.critical("Skorp-Beta-0.2 failed to load at startup: %s", _load_error)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -60,7 +60,7 @@ _CORE_FIELDS = frozenset(PredictRequest.model_fields)
 def predict(req: PredictWithPersonalizationRequest) -> PredictResponse:
     if _predictor is None or not _predictor.loaded:
         raise HTTPException(status_code=503, detail="Model not loaded — see /health")
-    # GLOBAL inference exactly as before, on the 12 validated core fields only.
+    # GLOBAL inference exactly as before, on the 11 validated core fields only.
     core = PredictRequest.model_validate(req.model_dump(include=_CORE_FIELDS))
     result = _predictor.predict(core)
     if "personalization" not in req.model_fields_set:

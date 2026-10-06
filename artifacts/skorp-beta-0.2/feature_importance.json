@@ -1,0 +1,78 @@
+{
+  "features": [
+    {
+      "feature": "male",
+      "importance_mean_raw": 0.02378437431400825,
+      "importance_std_raw": 0.008580837747787937,
+      "importance_percent": 16.37893643113546
+    },
+    {
+      "feature": "age",
+      "importance_mean_raw": 0.07812177633947098,
+      "importance_std_raw": 0.013987768335492812,
+      "importance_percent": 53.797993239534655
+    },
+    {
+      "feature": "currentSmoker",
+      "importance_mean_raw": -9.126776646000479e-05,
+      "importance_std_raw": 0.0002961054865107541,
+      "importance_percent": 0.0
+    },
+    {
+      "feature": "cigsPerDay",
+      "importance_mean_raw": 0.017444704231857372,
+      "importance_std_raw": 0.006495474441789567,
+      "importance_percent": 12.01316872587513
+    },
+    {
+      "feature": "BPMeds",
+      "importance_mean_raw": -0.0012094679868934698,
+      "importance_std_raw": 0.0029316803605110202,
+      "importance_percent": 0.0
+    },
+    {
+      "feature": "diabetes",
+      "importance_mean_raw": 0.0056205803135908105,
+      "importance_std_raw": 0.004225814510022019,
+      "importance_percent": 3.8705717647647075
+    },
+    {
+      "feature": "totChol",
+      "importance_mean_raw": -0.005041395857637441,
+      "importance_std_raw": 0.008744098468911898,
+      "importance_percent": 0.0
+    },
+    {
+      "feature": "sysBP",
+      "importance_mean_raw": 0.015067539627383292,
+      "importance_std_raw": 0.012601352544228657,
+      "importance_percent": 10.376151605769747
+    },
+    {
+      "feature": "diaBP",
+      "importance_mean_raw": 0.002091245576262376,
+      "importance_std_raw": 0.002887524688207265,
+      "importance_percent": 1.4401210602929808
+    },
+    {
+      "feature": "BMI",
+      "importance_mean_raw": 0.00023119041120870154,
+      "importance_std_raw": 0.0005223067710349346,
+      "importance_percent": 0.1592075956543103
+    },
+    {
+      "feature": "glucose",
+      "importance_mean_raw": 0.0028517684058131077,
+      "importance_std_raw": 0.0028117953005712304,
+      "importance_percent": 1.963849576973034
+    }
+  ],
+  "method": "permutation_importance",
+  "scoring": "average_precision",
+  "evaluated_on": "independent held-out TEST rows",
+  "n_repeats": 50,
+  "random_state": 42,
+  "label": "Global normalized predictive-dependence percentage according to permutation importance using average precision on TEST.",
+  "limitations": "Not causality or a percentage of individual patient risk. Correlated variables can share or suppress importance.",
+  "positive_mean_sum": 0.14521317921959487
+}

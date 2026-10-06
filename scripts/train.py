@@ -1,508 +1,213 @@
-"""
-Skorp-Beta-0.1 — offline training pipeline for CardioSense.
+"""Official offline CardioSense training entrypoint for Skorp-Beta-0.2.
 
-Run:
-    python3 scripts/train.py
-
-Produces (under artifacts/skorp-beta-0.1/):
-    classifier.joblib       — calibrated risk classifier (full pipeline)
-    imputer.joblib          — mean imputer fit on TRAIN only
-    anomaly_model.joblib    — IsolationForest fit on TRAIN normals (y==0)
-    feature_importance.json — permutation importance, top 6, sums to 100.00
-    metrics.json            — full metrics (CV, validation, test)
-    metadata.json           — model/dataset/training metadata
-    risk_thresholds.json    — LOW/MODERATE/HIGH thresholds
-    REPORT.md               — human-readable training report
-
-This script is OFFLINE ONLY. The AI Service never re-trains at startup —
-it only loads these artifacts (see app/inference.py).
+This source encodes the approved 11-feature PRE-T-A training contract. It is
+never invoked by the HTTP runtime. The checked-in approved Beta-0.2 artifacts
+are frozen inputs; this script refuses to overwrite their existing directory.
 """
 import hashlib
 import json
 import platform
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import imblearn
+import joblib
 import numpy as np
 import pandas as pd
 import sklearn
-import imblearn
-import joblib
+from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import Pipeline
 from sklearn.calibration import CalibratedClassifierCV, calibration_curve
-from sklearn.ensemble import (
-    RandomForestClassifier,
-    HistGradientBoostingClassifier,
-    IsolationForest,
-)
+from sklearn.ensemble import IsolationForest
 from sklearn.impute import SimpleImputer
 from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (
-    average_precision_score,
-    roc_auc_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    accuracy_score,
-    brier_score_loss,
-)
-from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
-from sklearn.pipeline import Pipeline as SkPipeline
+from sklearn.metrics import (accuracy_score, average_precision_score, brier_score_loss,
+                             confusion_matrix, f1_score, precision_score, recall_score, roc_auc_score)
+from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.preprocessing import StandardScaler
-from imblearn.over_sampling import SMOTE
-from imblearn.pipeline import Pipeline as ImbPipeline
 
-# ─── Constants (Skorp-Beta-0.1 configuration — do not tune post-hoc) ────────
-MODEL_NAME = "Skorp"
-MODEL_VERSION = "Skorp-Beta-0.1"
+ROOT = Path(__file__).resolve().parents[1]
+EXPECTED_HASH = '533fe2625b5aace28c21714cb9ba55ec35cba11177c31ad5d7a20c79101c8e76'
+FEATURES = ['male', 'age', 'currentSmoker', 'cigsPerDay', 'BPMeds', 'diabetes',
+            'totChol', 'sysBP', 'diaBP', 'BMI', 'glucose']
+VERSION = 'Skorp-Beta-0.2'
+MODEL_NAME = 'Skorp'
+MODEL_VERSION = VERSION
 RANDOM_STATE = 42
-
-FEATURES = [
-    "male", "age", "currentSmoker", "cigsPerDay", "BPMeds", "diabetes",
-    "totChol", "sysBP", "diaBP", "BMI", "heartRate", "glucose",
-]
-EXCLUDED_FEATURES = ["education", "prevalentStroke", "prevalentHyp"]
-TARGET = "TenYearCHD"
-
-RISK_THRESHOLDS = {"low_max": 0.20, "moderate_max": 0.35}  # LOW<0.20 MOD<0.35 HIGH>=0.35
-
-ANOMALY_CONFIG = {"n_estimators": 200, "contamination": 0.05, "random_state": RANDOM_STATE}
-
-RAW_CSV = Path(__file__).resolve().parent.parent / "data" / "raw" / "framingham.csv"
-ARTIFACT_DIR = Path(__file__).resolve().parent.parent / "artifacts" / "skorp-beta-0.1"
-ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+TARGET = 'TenYearCHD'
+RAW_CSV = ROOT / 'data' / 'raw' / 'framingham.csv'
+OUT = ROOT / 'artifacts' / 'skorp-beta-0.2'
+ARTIFACT_DIR = OUT
 
 
-def dataset_hash(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
-
-def risk_level(score: float) -> str:
-    if score < RISK_THRESHOLDS["low_max"]:
-        return "low"
-    if score < RISK_THRESHOLDS["moderate_max"]:
-        return "moderate"
-    return "high"
-
-
-def evaluate(y_true, proba, threshold=0.35):
-    pred = (proba >= threshold).astype(int)
-    return {
-        "roc_auc": float(roc_auc_score(y_true, proba)),
-        "pr_auc": float(average_precision_score(y_true, proba)),
-        "precision": float(precision_score(y_true, pred, zero_division=0)),
-        "recall": float(recall_score(y_true, pred, zero_division=0)),
-        "f1": float(f1_score(y_true, pred, zero_division=0)),
-        "accuracy": float(accuracy_score(y_true, pred)),
-        "brier_score": float(brier_score_loss(y_true, proba)),
-        "threshold_used": threshold,
-    }
-
-
-def select_best(rows):
-    """Rule 10: max PR-AUC; tie (<=0.005) -> max ROC-AUC; tie -> max recall;
-    tie -> min Brier; tie -> simpler/more stable model."""
-    def key(r):
-        return (round(r["metrics"]["pr_auc"], 3), round(r["metrics"]["roc_auc"], 3),
-                round(r["metrics"]["recall"], 3), -round(r["metrics"]["brier_score"], 4))
-    return sorted(rows, key=key, reverse=True)[0]
-
-
-# U8.6C-FIX-1 — pure, independently-testable (no I/O, no model fitting) so
-# META-01..05 can exercise this logic directly without running the full
-# training pipeline (see tests/test_metadata_eligibility.py).
-#
-# Population used: the FULL processed age column (`df["age"]`, i.e. all rows
-# used to build `X` — train + validation + test combined), taken BEFORE the
-# train/validation/test split. This matches the population the already
-# checked-in metadata.json's own basis text refers to ("the training
-# dataset (framingham.csv)"), and is intentionally NOT restricted to
-# X_train alone: on the current dataset, X_train's own age range happens to
-# already be 32-70, but the validation (34-69) and test (33-69) splits are
-# each narrower — confirming these can genuinely diverge, so "the training
-# dataset" here means the whole population this model version was built
-# and evaluated against, not just the exact fold passed to `.fit()`.
-#
-# CURRENT Skorp-Beta-0.1 policy (explicit, not silent): eligible_age_range
-# is set EQUAL to the observed training_age_range — no independent 32/70
-# constant. A future retraining on a genuinely different dataset will
-# therefore produce a different (still internally consistent) eligible
-# range automatically — this reflects observed model support for THAT
-# training run, never a claim of clinical/medical validation. A future
-# model version may adopt an explicitly different eligibility policy in
-# code; this function only implements "eligible == observed training
-# support", the policy already established in U8.6A/B for Skorp-Beta-0.1.
 def compute_eligibility_metadata(age_series: pd.Series) -> dict:
+    """Derive model support from the observed training population.
+
+    This is model eligibility/support metadata, not a clinically validated
+    age range. The returned dictionaries are independent objects.
+    """
     age_min = int(age_series.min())
     age_max = int(age_series.max())
-    training_age_range = {"min": age_min, "max": age_max}
-    eligible_age_range = dict(training_age_range)  # explicit copy — see docstring above
-    eligible_age_range_basis = (
-        "Chosen to match the ages observed in the training dataset "
-        f"(framingham.csv: {age_min}-{age_max} inclusive). Observed model age "
-        "support only; not a clinically validated or medically established range."
-    )
+    training = {"min": age_min, "max": age_max}
+    eligible = dict(training)
     return {
-        "training_age_range": training_age_range,
-        "eligible_age_range": eligible_age_range,
-        "eligible_age_range_basis": eligible_age_range_basis,
+        "training_age_range": training,
+        "eligible_age_range": eligible,
+        "eligible_age_range_basis": "Observed dataset support only, not clinical validation.",
     }
+
+def read_verified(path):
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    if digest != EXPECTED_HASH:
+        raise ValueError(f'BLOCKED: dataset hash mismatch: {digest}')
+    return pd.read_csv(path)
+
+
+def split(X, y):
+    train, temp, yt, ytemp = train_test_split(X, y, test_size=.30, stratify=y, random_state=42)
+    val, test, yv, ys = train_test_split(temp, ytemp, test_size=.50, stratify=ytemp, random_state=42)
+    return train, val, test, yt, yv, ys
+
+
+def pipeline():
+    # Preprocessing is fitted inside each calibration/CV training fold.
+    return Pipeline([('imputer', SimpleImputer(strategy='mean')),
+                     ('scaler', StandardScaler()), ('smote', SMOTE(random_state=42, k_neighbors=5)),
+                     ('clf', LogisticRegression(max_iter=2000, random_state=42))])
+
+
+def evaluate(y, p, threshold):
+    p = validate_probabilities(p)
+    pred = p >= threshold
+    tn, fp, fn, tp = confusion_matrix(y, pred, labels=[0, 1]).ravel()
+    return dict(roc_auc=float(roc_auc_score(y, p)), pr_auc=float(average_precision_score(y, p)),
+                precision=float(precision_score(y, pred, zero_division=0)),
+                recall=float(recall_score(y, pred, zero_division=0)), f1=float(f1_score(y, pred, zero_division=0)),
+                accuracy=float(accuracy_score(y, pred)), brier_score=float(brier_score_loss(y, p)),
+                sensitivity=float(tp / (tp + fn)) if tp + fn else 0.,
+                specificity=float(tn / (tn + fp)) if tn + fp else 0.,
+                ppv=float(tp / (tp + fp)) if tp + fp else 0.,
+                npv=float(tn / (tn + fn)) if tn + fn else 0.,
+                threshold_used=threshold, tn=int(tn), fp=int(fp), fn=int(fn), tp=int(tp))
+
+
+def validate_probabilities(p):
+    p = np.asarray(p, dtype=float)
+    if not np.isfinite(p).all() or ((p < 0) | (p > 1)).any():
+        raise ValueError('Probabilities must be finite and in [0, 1]')
+    return p
+
+
+def levels(p):
+    p = validate_probabilities(p)
+    return np.where(p < .20, 'LOW', np.where(p < .35, 'MODERATE', 'HIGH'))
+
+
+def normalize_importance(means, stds):
+    positive = np.maximum(means, 0)
+    total = positive.sum()
+    return [dict(feature=f, importance_mean_raw=float(m), importance_std_raw=float(s),
+                 importance_percent=float(100 * pos / total) if total > 0 else 0.)
+            for f, m, s, pos in zip(FEATURES, means, stds, positive)]
+
+
+def dump(name, obj):
+    (OUT / name).write_text(json.dumps(obj, indent=2, allow_nan=False), encoding='utf-8')
 
 
 def main():
-    print(f"=== Training {MODEL_VERSION} ===")
-    if not RAW_CSV.exists():
-        print(f"FATAL: dataset not found at {RAW_CSV}")
-        sys.exit(1)
-
-    raw_hash = dataset_hash(RAW_CSV)
-    df_raw = pd.read_csv(RAW_CSV)
-    print(f"Raw dataset: {df_raw.shape}, sha256={raw_hash}")
-
-    # ─── 3. Minimal processed dataset — only required columns ──────────────
-    missing_required = [c for c in FEATURES + [TARGET] if c not in df_raw.columns]
-    if missing_required:
-        print(f"FATAL: dataset missing required columns: {missing_required}")
-        sys.exit(1)
-
-    df = df_raw[FEATURES + [TARGET]].copy()
-    missing_report = df[FEATURES].isna().sum().to_dict()
-    print("Missing values (processed columns):", missing_report)
-
-    X = df[FEATURES]
-    y = df[TARGET].astype(int)
-
-    # ─── 7. Split 70/15/15 stratified, random_state=42 ──────────────────────
-    X_train, X_temp, y_train, y_temp = train_test_split(
-        X, y, test_size=0.30, stratify=y, random_state=RANDOM_STATE,
-    )
-    X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp, test_size=0.50, stratify=y_temp, random_state=RANDOM_STATE,
-    )
-    sizes = {"train": len(X_train), "validation": len(X_val), "test": len(X_test)}
-    print("Split sizes:", sizes)
-
-    class_dist = {
-        "train": y_train.value_counts().to_dict(),
-        "validation": y_val.value_counts().to_dict(),
-        "test": y_test.value_counts().to_dict(),
-    }
-
-    # ─── 6. Imputation — mean, fit on TRAIN ONLY ────────────────────────────
-    imputer = SimpleImputer(strategy="mean")
-    X_train_imp = pd.DataFrame(imputer.fit_transform(X_train), columns=FEATURES, index=X_train.index)
-    X_val_imp = pd.DataFrame(imputer.transform(X_val), columns=FEATURES, index=X_val.index)
-    X_test_imp = pd.DataFrame(imputer.transform(X_test), columns=FEATURES, index=X_test.index)
-
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)
-
-    # ─── 9/10/11. Candidate models ──────────────────────────────────────────
-    candidates = []
-
-    # Candidate A: RandomForest + SMOTE (grid search, SMOTE inside CV folds only)
-    rf_smote_pipe = ImbPipeline([
-        ("smote", SMOTE(random_state=RANDOM_STATE, k_neighbors=5)),
-        ("clf", RandomForestClassifier(random_state=RANDOM_STATE)),
-    ])
-    rf_grid = {
-        "clf__n_estimators": [100, 200, 300],
-        "clf__max_depth": [None, 10, 20],
-        "clf__min_samples_split": [2, 5],
-    }
-    print("Fitting RandomForest + SMOTE grid search...")
-    gs_rf_smote = GridSearchCV(rf_smote_pipe, rf_grid, scoring="average_precision", cv=cv, n_jobs=-1)
-    gs_rf_smote.fit(X_train_imp, y_train)
-    val_proba = gs_rf_smote.predict_proba(X_val_imp)[:, 1]
-    candidates.append({
-        "name": "RandomForest+SMOTE",
-        "pipeline": gs_rf_smote.best_estimator_,
-        "hyperparameters": gs_rf_smote.best_params_,
-        "cv_pr_auc": float(gs_rf_smote.best_score_),
-        "metrics": evaluate(y_val, val_proba),
-        "uses_smote": True,
-    })
-
-    # Candidate B: RandomForest + class_weight=balanced, NO SMOTE (independent experiment)
-    rf_bal_pipe = SkPipeline([
-        ("clf", RandomForestClassifier(random_state=RANDOM_STATE, class_weight="balanced")),
-    ])
-    rf_bal_grid = {
-        "clf__n_estimators": [100, 200, 300],
-        "clf__max_depth": [None, 10, 20],
-        "clf__min_samples_split": [2, 5],
-    }
-    print("Fitting RandomForest + class_weight=balanced grid search...")
-    gs_rf_bal = GridSearchCV(rf_bal_pipe, rf_bal_grid, scoring="average_precision", cv=cv, n_jobs=-1)
-    gs_rf_bal.fit(X_train_imp, y_train)
-    val_proba = gs_rf_bal.predict_proba(X_val_imp)[:, 1]
-    candidates.append({
-        "name": "RandomForest+class_weight_balanced",
-        "pipeline": gs_rf_bal.best_estimator_,
-        "hyperparameters": gs_rf_bal.best_params_,
-        "cv_pr_auc": float(gs_rf_bal.best_score_),
-        "metrics": evaluate(y_val, val_proba),
-        "uses_smote": False,
-    })
-
-    # Candidate C: LogisticRegression + SMOTE (baseline, single config)
-    lr_pipe = ImbPipeline([
-        ("scaler", StandardScaler()),
-        ("smote", SMOTE(random_state=RANDOM_STATE, k_neighbors=5)),
-        ("clf", LogisticRegression(max_iter=2000, random_state=RANDOM_STATE)),
-    ])
-    print("Fitting LogisticRegression + SMOTE...")
-    cv_scores = []
-    for tr_idx, te_idx in cv.split(X_train_imp, y_train):
-        lr_pipe.fit(X_train_imp.iloc[tr_idx], y_train.iloc[tr_idx])
-        p = lr_pipe.predict_proba(X_train_imp.iloc[te_idx])[:, 1]
-        cv_scores.append(average_precision_score(y_train.iloc[te_idx], p))
-    lr_pipe.fit(X_train_imp, y_train)
-    val_proba = lr_pipe.predict_proba(X_val_imp)[:, 1]
-    candidates.append({
-        "name": "LogisticRegression+SMOTE",
-        "pipeline": lr_pipe,
-        "hyperparameters": {"max_iter": 2000},
-        "cv_pr_auc": float(np.mean(cv_scores)),
-        "metrics": evaluate(y_val, val_proba),
-        "uses_smote": True,
-    })
-
-    # Candidate D: HistGradientBoosting + SMOTE (single config)
-    hgb_pipe = ImbPipeline([
-        ("smote", SMOTE(random_state=RANDOM_STATE, k_neighbors=5)),
-        ("clf", HistGradientBoostingClassifier(random_state=RANDOM_STATE)),
-    ])
-    print("Fitting HistGradientBoosting + SMOTE...")
-    cv_scores = []
-    for tr_idx, te_idx in cv.split(X_train_imp, y_train):
-        hgb_pipe.fit(X_train_imp.iloc[tr_idx], y_train.iloc[tr_idx])
-        p = hgb_pipe.predict_proba(X_train_imp.iloc[te_idx])[:, 1]
-        cv_scores.append(average_precision_score(y_train.iloc[te_idx], p))
-    hgb_pipe.fit(X_train_imp, y_train)
-    val_proba = hgb_pipe.predict_proba(X_val_imp)[:, 1]
-    candidates.append({
-        "name": "HistGradientBoosting+SMOTE",
-        "pipeline": hgb_pipe,
-        "hyperparameters": {},
-        "cv_pr_auc": float(np.mean(cv_scores)),
-        "metrics": evaluate(y_val, val_proba),
-        "uses_smote": True,
-    })
-
-    for c in candidates:
-        print(f"  {c['name']}: CV PR-AUC={c['cv_pr_auc']:.4f} | VAL PR-AUC={c['metrics']['pr_auc']:.4f} "
-              f"ROC-AUC={c['metrics']['roc_auc']:.4f} Recall={c['metrics']['recall']:.4f} "
-              f"Brier={c['metrics']['brier_score']:.4f}")
-
-    selected = select_best(candidates)
-    print(f"\n>>> Selected: {selected['name']} <<<")
-
-    # ─── 13. Calibration — CalibratedClassifierCV, SMOTE applied per-fold ───
-    print("Calibrating selected model (sigmoid, cv=5, SMOTE inside each fold)...")
-    calibrated = CalibratedClassifierCV(estimator=selected["pipeline"], method="sigmoid", cv=cv)
-    calibrated.fit(X_train_imp, y_train)
-
-    # ─── Final TEST evaluation (independent, never used for selection) ─────
-    test_proba = calibrated.predict_proba(X_test_imp)[:, 1]
-    test_metrics = evaluate(y_test, test_proba, threshold=RISK_THRESHOLDS["moderate_max"])
-    frac_pos, mean_pred = calibration_curve(y_test, test_proba, n_bins=10, strategy="uniform")
-    test_metrics["calibration_curve"] = {
-        "mean_predicted_prob": [float(v) for v in mean_pred],
-        "fraction_of_positives": [float(v) for v in frac_pos],
-    }
-    print("TEST metrics:", {k: v for k, v in test_metrics.items() if k != "calibration_curve"})
-
-    roc_auc_target_met = test_metrics["roc_auc"] >= 0.80
-    print(f"ROC-AUC >= 0.80 objective: {'MET' if roc_auc_target_met else 'NOT MET'} "
-          f"(actual: {test_metrics['roc_auc']:.4f})")
-
-    # ─── 15. Anomaly detector — IsolationForest on TRAIN normals only ───────
-    print("Training anomaly detector (IsolationForest on y_train==0)...")
-    X_train_normal = X_train_imp[y_train.values == 0]
-    anomaly_model = IsolationForest(**ANOMALY_CONFIG)
-    anomaly_model.fit(X_train_normal)
-
-    # Sanity check semantics on TEST: anomaly_score<0 -> is_anomaly True
-    test_anomaly_scores = anomaly_model.decision_function(X_test_imp)
-    test_is_anomaly = test_anomaly_scores < 0
-    anomaly_rate_test = float(test_is_anomaly.mean())
-    print(f"Anomaly rate on TEST: {anomaly_rate_test:.4f}")
-
-    # ─── 17. Feature importance — Permutation Importance on TEST, top 6 ────
-    print("Computing permutation importance on TEST set...")
-    perm = permutation_importance(
-        calibrated, X_test_imp, y_test,
-        scoring="average_precision", n_repeats=10, random_state=RANDOM_STATE, n_jobs=-1,
-    )
-    importances = pd.Series(perm.importances_mean, index=FEATURES).clip(lower=0)
-    top6 = importances.sort_values(ascending=False).head(6)
-    total = top6.sum()
-    if total <= 0:
-        # No candidate had positive importance — do not fabricate. Flag clearly.
-        feature_importance_pct = {k: None for k in top6.index}
-        feature_importance_note = "N/A — permutation importance was zero/negative for all features"
-    else:
-        raw_pct = (top6 / total * 100)
-        rounded = raw_pct.round(2)
-        # largest-remainder adjustment so the six values sum to exactly 100.00
-        diff = round(100.00 - rounded.sum(), 2)
-        if abs(diff) >= 0.01:
-            idx = rounded.idxmax()
-            rounded[idx] = round(rounded[idx] + diff, 2)
-        feature_importance_pct = {k: float(v) for k, v in rounded.items()}
-        feature_importance_note = None
-    print("Top 6 feature importance (%):", feature_importance_pct)
-
-    # ─── Persist artifacts ───────────────────────────────────────────────
-    joblib.dump(calibrated, ARTIFACT_DIR / "classifier.joblib")
-    joblib.dump(imputer, ARTIFACT_DIR / "imputer.joblib")
-    joblib.dump(anomaly_model, ARTIFACT_DIR / "anomaly_model.joblib")
-
-    with open(ARTIFACT_DIR / "risk_thresholds.json", "w") as f:
-        json.dump(RISK_THRESHOLDS, f, indent=2)
-
-    with open(ARTIFACT_DIR / "feature_importance.json", "w") as f:
-        json.dump({
-            "top_6": feature_importance_pct,
-            "note": feature_importance_note,
-            "method": "permutation_importance",
-            "scoring": "average_precision",
-            "evaluated_on": "test_set",
-            "n_repeats": 10,
-        }, f, indent=2)
-
-    metrics_out = {
-        "candidates": [
-            {
-                "name": c["name"],
-                "cv_pr_auc": c["cv_pr_auc"],
-                "hyperparameters": c["hyperparameters"],
-                "uses_smote": c["uses_smote"],
-                "validation_metrics": c["metrics"],
-            }
-            for c in candidates
-        ],
-        "selected_model": selected["name"],
-        "selection_metric": "PR-AUC (validation) -> ROC-AUC -> Recall -> Brier -> simplicity",
-        "test_metrics": test_metrics,
-        "roc_auc_target_0_80_met": roc_auc_target_met,
-        "anomaly_rate_on_test": anomaly_rate_test,
-    }
-    with open(ARTIFACT_DIR / "metrics.json", "w") as f:
-        json.dump(metrics_out, f, indent=2)
-
-    metadata = {
-        "model_name": MODEL_NAME,
-        "model_version": MODEL_VERSION,
-        "dataset": "framingham.csv (user-provided)",
-        "dataset_hash_sha256": raw_hash,
-        "dataset_shape_raw": list(df_raw.shape),
-        "target": TARGET,
-        "features": FEATURES,
-        "excluded_features": EXCLUDED_FEATURES,
-        **compute_eligibility_metadata(X["age"]),
-        "missing_values_processed_columns": {k: int(v) for k, v in missing_report.items()},
-        "train_size": sizes["train"],
-        "validation_size": sizes["validation"],
-        "test_size": sizes["test"],
-        "class_distribution": {
-            split: {str(k): int(v) for k, v in d.items()} for split, d in class_dist.items()
-        },
-        "random_state": RANDOM_STATE,
-        "smote_config": {"random_state": RANDOM_STATE, "k_neighbors": 5, "applied_to": "train_only_per_cv_fold"},
-        "selected_algorithm": selected["name"],
-        "selected_hyperparameters": selected["hyperparameters"],
-        "selection_metric": "PR-AUC (primary), ROC-AUC/Recall/Brier as tie-breakers",
-        "metrics": test_metrics,
-        "calibration_method": "CalibratedClassifierCV(method='sigmoid', cv=StratifiedKFold(5))",
-        "risk_thresholds": RISK_THRESHOLDS,
-        "anomaly_algorithm": "IsolationForest",
-        "anomaly_configuration": ANOMALY_CONFIG,
-        "anomaly_semantics": "decision_function() < 0 => is_anomaly=true (more negative = more atypical)",
-        "training_timestamp": datetime.now(timezone.utc).isoformat(),
-        "python_version": platform.python_version(),
-        "dependency_versions": {
-            "pandas": pd.__version__,
-            "numpy": np.__version__,
-            "scikit-learn": sklearn.__version__,
-            "imbalanced-learn": imblearn.__version__,
-        },
-    }
-    with open(ARTIFACT_DIR / "metadata.json", "w") as f:
-        json.dump(metadata, f, indent=2)
-
-    # ─── Human-readable report ───────────────────────────────────────────
-    report_lines = [
-        f"# {MODEL_VERSION} — Training Report",
-        "",
-        f"Generated: {metadata['training_timestamp']}",
-        "",
-        "## Dataset",
-        f"- Source: framingham.csv (user-provided), sha256 `{raw_hash}`",
-        f"- Raw shape: {df_raw.shape}",
-        f"- Features ({len(FEATURES)}): {', '.join(FEATURES)}",
-        f"- Excluded features: {', '.join(EXCLUDED_FEATURES)}",
-        f"- Target: {TARGET}",
-        f"- Missing values (processed columns): {missing_report}",
-        "",
-        "## Split",
-        f"- Train: {sizes['train']} | Validation: {sizes['validation']} | Test: {sizes['test']}",
-        f"- Class distribution: {class_dist}",
-        "",
-        "## SMOTE",
-        f"- {metadata['smote_config']}",
-        "",
-        "## Candidate models (validation set)",
-    ]
-    for c in candidates:
-        report_lines.append(
-            f"- **{c['name']}** — hyperparams={c['hyperparameters']} — "
-            f"CV PR-AUC={c['cv_pr_auc']:.4f} | VAL PR-AUC={c['metrics']['pr_auc']:.4f} "
-            f"ROC-AUC={c['metrics']['roc_auc']:.4f} Recall={c['metrics']['recall']:.4f} "
-            f"Precision={c['metrics']['precision']:.4f} F1={c['metrics']['f1']:.4f} "
-            f"Accuracy={c['metrics']['accuracy']:.4f} Brier={c['metrics']['brier_score']:.4f}"
-        )
-    report_lines += [
-        "",
-        f"## Selected model: {selected['name']}",
-        f"- Rationale: highest PR-AUC on validation; ties broken by ROC-AUC, then Recall, "
-        f"then lower Brier Score, then simpler/more stable model.",
-        f"- Hyperparameters: {selected['hyperparameters']}",
-        "",
-        "## Calibration",
-        f"- Method: {metadata['calibration_method']}",
-        "",
-        "## TEST metrics (final, independent)",
-        f"- ROC-AUC: {test_metrics['roc_auc']:.4f}",
-        f"- PR-AUC: {test_metrics['pr_auc']:.4f}",
-        f"- Precision: {test_metrics['precision']:.4f}",
-        f"- Recall: {test_metrics['recall']:.4f}",
-        f"- F1: {test_metrics['f1']:.4f}",
-        f"- Accuracy: {test_metrics['accuracy']:.4f}",
-        f"- Brier Score: {test_metrics['brier_score']:.4f}",
-        f"- ROC-AUC >= 0.80 objective: {'MET' if roc_auc_target_met else 'NOT MET'}",
-        "",
-        "## Anomaly detection",
-        f"- {ANOMALY_CONFIG}",
-        f"- Anomaly rate on TEST: {anomaly_rate_test:.4f}",
-        "",
-        "## Feature importance (Permutation Importance, TEST set, top 6)",
-        f"- {feature_importance_pct}" if feature_importance_note is None else f"- {feature_importance_note}",
-        "",
-        "## Risk thresholds",
-        f"- LOW: 0.00 <= score < {RISK_THRESHOLDS['low_max']}",
-        f"- MODERATE: {RISK_THRESHOLDS['low_max']} <= score < {RISK_THRESHOLDS['moderate_max']}",
-        f"- HIGH: {RISK_THRESHOLDS['moderate_max']} <= score <= 1.00",
-        "",
-        f"## Model version: {MODEL_VERSION}",
-        f"## Dataset hash: {raw_hash}",
-    ]
-    (ARTIFACT_DIR / "REPORT.md").write_text("\n".join(report_lines))
-
-    print(f"\nArtifacts written to {ARTIFACT_DIR}")
-    print("Done.")
+    raw = read_verified(RAW_CSV)
+    X, y = raw[FEATURES].copy(), raw[TARGET].copy()
+    if y.isna().any() or set(y.unique()) != {0, 1} or np.isinf(X.to_numpy()).any():
+        raise ValueError('BLOCKED: invalid target or infinite feature values')
+    for f in ['male', 'currentSmoker', 'BPMeds', 'diabetes']:
+        if not set(X[f].dropna().unique()) <= {0, 1}:
+            raise ValueError(f'BLOCKED: invalid binary feature {f}')
+    xt, xv, xs, yt, yv, ys = split(X, y)
+    rowhash = pd.util.hash_pandas_object(X, index=False)
+    overlaps = {f'{a}_{b}': len(set(rowhash.loc[u.index]) & set(rowhash.loc[v.index]))
+                for a, u, b, v in [('train', xt, 'test', xs), ('train', xt, 'validation', xv),
+                                   ('validation', xv, 'test', xs)]}
+    if any(overlaps.values()):
+        raise ValueError(f'BLOCKED: duplicate feature vectors cross splits: {overlaps}')
+    OUT.mkdir(parents=True, exist_ok=False)
+    audit = dict(raw_shape=list(raw.shape), dataset_hash_sha256=EXPECTED_HASH,
+                 duplicate_raw_rows=int(raw.duplicated().sum()), duplicate_feature_rows=int(X.duplicated().sum()),
+                 cross_split_feature_duplicates=overlaps, subject_identifiers_available=False,
+                 limitation='Subject-level leakage cannot be independently ruled out: no subject identifiers are available.',
+                 missing={k: int(v) for k, v in X.isna().sum().items()},
+                 ranges={f: dict(min=float(X[f].min()), max=float(X[f].max())) for f in FEATURES},
+                 smoker_zero_cigarettes=int(((X.currentSmoker == 1) & (X.cigsPerDay == 0)).sum()),
+                 nonsmoker_positive_cigarettes=int(((X.currentSmoker == 0) & (X.cigsPerDay > 0)).sum()),
+                 action='No rows removed, no clipping; mean imputation fitted on training data only.')
+    dump('dataset_audit.json', audit)
+    splits = {name: frame.index.tolist() for name, frame in [('train', xt), ('validation', xv), ('test', xs)]}
+    dump('split_indices.json', splits)
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    cv_ap = []
+    for a, b in cv.split(xt, yt):
+        m = pipeline().fit(xt.iloc[a], yt.iloc[a])
+        cv_ap.append(float(average_precision_score(yt.iloc[b], m.predict_proba(xt.iloc[b])[:, 1])))
+    model = CalibratedClassifierCV(estimator=pipeline(), method='sigmoid', cv=cv)
+    model.fit(xt, yt)
+    p = model.predict_proba(xs)[:, 1]
+    metrics = {str(t): evaluate(ys, p, t) for t in [.20, .35]}
+    strata = {}
+    for name in ['LOW', 'MODERATE', 'HIGH']:
+        mask = levels(p) == name
+        strata[name] = dict(count=int(mask.sum()), positives=int(ys.to_numpy()[mask].sum()),
+                            observed_event_rate=float(ys.to_numpy()[mask].mean()) if mask.any() else None,
+                            mean_probability=float(p[mask].mean()) if mask.any() else None)
+    frac, mean = calibration_curve(ys, p, n_bins=10, strategy='uniform')
+    imputer = SimpleImputer(strategy='mean').fit(xt)
+    anomaly = IsolationForest(n_estimators=200, contamination=.05, random_state=42)
+    anomaly.fit(pd.DataFrame(imputer.transform(xt[yt == 0]), columns=FEATURES))
+    scores = anomaly.decision_function(pd.DataFrame(imputer.transform(xs), columns=FEATURES))
+    perm = permutation_importance(model, xs, ys, scoring='average_precision', n_repeats=50, random_state=42, n_jobs=1)
+    importance = normalize_importance(perm.importances_mean, perm.importances_std)
+    dump('feature_importance.json', dict(features=importance, method='permutation_importance', scoring='average_precision',
+         evaluated_on='independent held-out TEST rows', n_repeats=50, random_state=42,
+         label='Global normalized predictive-dependence percentage according to permutation importance using average precision on TEST.',
+         limitations='Not causality or a percentage of individual patient risk. Correlated variables can share or suppress importance.',
+         positive_mean_sum=float(np.maximum(perm.importances_mean, 0).sum())))
+    baseline = json.loads((ROOT / 'artifacts/skorp-beta-0.1/metadata.json').read_text())
+    comparison = {k: dict(baseline_12=baseline['metrics'][k], candidate_11=metrics['0.35'][k],
+                         delta=metrics['0.35'][k] - baseline['metrics'][k])
+                  for k in ['roc_auc', 'pr_auc', 'precision', 'recall', 'f1', 'accuracy', 'brier_score']}
+    dump('metrics.json', dict(test_by_threshold=metrics, test_strata=strata, comparison_to_reported_baseline=comparison,
+         baseline_source='Supplied historical metadata; historical model not loaded or retrained.',
+         comparison_limitation='Same row split and model family; candidate moves imputation inside CV folds and uses recorded dependency versions. Differences cannot be attributed exclusively to feature removal.',
+         cv_uncalibrated_pr_auc=cv_ap, validation_metrics=evaluate(yv, model.predict_proba(xv)[:, 1], .35),
+         calibration_curve=dict(mean_predicted_prob=mean.tolist(), fraction_of_positives=frac.tolist()),
+         anomaly_rate_test=float((scores < 0).mean()), roc_auc_target_0_80_met=metrics['0.35']['roc_auc'] >= .80))
+    dump('risk_thresholds.json', dict(low_max=.20, moderate_max=.35))
+    dump('metadata.json', dict(model_name='Skorp', model_version=VERSION, features=FEATURES, target=TARGET,
+         dataset_hash_sha256=EXPECTED_HASH, dataset_shape_raw=list(raw.shape), random_state=42,
+         selected_algorithm='LogisticRegression+SMOTE', selection='Family/config fixed before TEST; no candidate search or TEST tuning.',
+         calibration_method="CalibratedClassifierCV(method='sigmoid', cv=StratifiedKFold(5, shuffle=True, random_state=42))",
+         preprocessing='Classifier accepts raw 11-feature frames; each calibrated estimator owns its imputer/scaler. Separate imputer is for IsolationForest only.',
+         smote_config=dict(random_state=42, k_neighbors=5, applied_to='train_only_per_cv_fold'),
+         anomaly_configuration=dict(n_estimators=200, contamination=.05, training_population='TRAIN y==0', features=FEATURES),
+         **compute_eligibility_metadata(X.age),
+         split_sizes={k: len(v) for k, v in splits.items()},
+         class_distribution={k: {str(c): int(n) for c, n in y.loc[v].value_counts().items()} for k, v in splits.items()},
+         python_version=platform.python_version(), dependency_versions=dict(numpy=np.__version__, pandas=pd.__version__,
+         sklearn=sklearn.__version__, imblearn=imblearn.__version__, joblib=joblib.__version__),
+         training_timestamp=datetime.now(timezone.utc).isoformat(), deployment_status='offline candidate only'))
+    for name, obj in [('classifier', model), ('imputer', imputer), ('anomaly_model', anomaly)]:
+        joblib.dump(obj, OUT / f'{name}.joblib')
+    pd.DataFrame(dict(row_index=xs.index, target=ys, probability=p, risk_level=levels(p), anomaly_score=scores)).to_csv(OUT / 'test_predictions.csv', index=False)
+    pd.DataFrame(importance).to_csv(OUT / 'feature_importance.csv', index=False)
+    # Use the same closure path on future explicit offline training runs.
+    try:
+        from scripts.close_pre_t_a_fix1 import close
+    except ModuleNotFoundError:  # direct `python scripts/train.py` execution
+        from close_pre_t_a_fix1 import close
+    close()
+    print(json.dumps(dict(metrics=metrics, strata=strata, importance=importance), indent=2))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

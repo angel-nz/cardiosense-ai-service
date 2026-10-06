@@ -37,7 +37,7 @@ ERRATIC = [(140, 88, 225, 100), (175, 100, 260, 140), (132, 82, 205, 90), (170, 
 def r4b_counts(raw_records):
     """Exactly the R4B EvidenceCounts key sets (wire = toPersonalizationRequest)."""
     return {
-        "clinical": {"rawRecords": raw_records, "droppedOutOfScope": 0, "excludedInvalid": 0,
+        "clinical": {"rawRecords": raw_records, "droppedOutOfScope": 0, "excludedUnmeasuredClinicalTime": 0, "excludedInvalid": 0,
                      "excludedOutOfDomain": 0, "excludedAmbiguousTimestamp": 0,
                      "excludedDuplicateOfAnchor": 0, "sameTimestampCollapsed": 0,
                      "burstCollapsedDuplicates": 0, "effectiveUnits": raw_records},
@@ -49,7 +49,7 @@ def r4b_counts(raw_records):
 
 
 def r4b_ev(units):
-    return {"version": "R-BPBC-1", "raw_counts": r4b_counts(len(units)), "units": units}
+    return {"version": "R-BPBC-3", "raw_counts": r4b_counts(len(units)), "units": units}
 
 
 def post(body, c=client, **kw):
@@ -72,7 +72,7 @@ def mode_b(block, current=XT):
 
 def assert_block_shape(b):
     assert list(b) == BLOCK_KEYS
-    assert b["version"] == "R-BPBC-1" and b["status"] in STATUSES
+    assert b["version"] == "R-BPBC-3" and b["status"] in STATUSES
 
 
 def assert_global_fallback(body, status, reason):
@@ -97,9 +97,10 @@ def test_A_no_block_is_legacy_and_key_absent():
     body = r.json()
     assert list(body) == TOP_KEYS                                    # key ABSENT, not null
     assert b'"personalization"' not in r.content
-    # Unknown extra keys in a legacy request are still ignored (unchanged).
+    # PRE-T-B makes the 11-feature global contract strict: unknown or obsolete
+    # top-level fields are rejected rather than silently ignored.
     r2 = post(dict(XT, someOtherKey=1))
-    assert r2.status_code == 200 and r2.content == r.content
+    assert r2.status_code == 422
 
 
 def test_B_valid_individualized_r4b_wire_shape():
@@ -118,7 +119,7 @@ def test_B_valid_individualized_r4b_wire_shape():
         assert list(d) == ["z", "s", "K_anchor", "K_anchor_prime"]  # no μ, P, x̃
     assert "global_risk_score" not in p and "conditioned_risk_score" not in p
     assert "gradients" not in p
-    assert body["model_version"] == "Skorp-Beta-0.1" and p["version"] == "R-BPBC-1"
+    assert body["model_version"] == "Skorp-Beta-0.2" and p["version"] == "R-BPBC-3"
 
 
 def test_B_engine_result_matches_frozen_r4c():
@@ -159,7 +160,7 @@ def test_E_incompatible_history():
     assert_global_fallback(mode_b(excluded), "GLOBAL_INCOMPATIBLE_HISTORY", "CLINICAL_HISTORY_EXCLUDED")
 
 
-@pytest.mark.parametrize("version", ["R-BPBC-2", "r-bpbc-1", "", None, 1, ["R-BPBC-1"]])
+@pytest.mark.parametrize("version", ["R-BPBC-1", "R-BPBC-2", "r-bpbc-1", "", None, 1, ["R-BPBC-3"]])
 def test_F_unsupported_version(version):
     block = r4b_ev(hist(STABLE)) | {"version": version}
     assert_global_fallback(mode_b(block), "GLOBAL_ERROR_FALLBACK", "UNSUPPORTED_VERSION")
@@ -170,21 +171,21 @@ def test_F_unsupported_version(version):
 
 @pytest.mark.parametrize("block,reason", [
     (None, "INVALID_PAYLOAD"),                                   # explicit null = NEW-R, invalid block
-    ("R-BPBC-1", "INVALID_PAYLOAD"),
+    ("R-BPBC-3", "INVALID_PAYLOAD"),
     (42, "INVALID_PAYLOAD"),
     ([], "INVALID_PAYLOAD"),
-    ({"version": "R-BPBC-1"}, "INVALID_PAYLOAD"),                # raw_counts missing
-    ({"version": "R-BPBC-1", "raw_counts": r4b_counts(0), "units": "x"}, "INVALID_PAYLOAD"),
-    ({"version": "R-BPBC-1", "raw_counts": r4b_counts(1),
+    ({"version": "R-BPBC-3"}, "INVALID_PAYLOAD"),                # raw_counts missing
+    ({"version": "R-BPBC-3", "raw_counts": r4b_counts(0), "units": "x"}, "INVALID_PAYLOAD"),
+    ({"version": "R-BPBC-3", "raw_counts": r4b_counts(1),
       "units": [{"t_days": -1, "states": []}]}, "INVALID_PAYLOAD"),
-    ({"version": "R-BPBC-1", "raw_counts": r4b_counts(1),
+    ({"version": "R-BPBC-3", "raw_counts": r4b_counts(1),
       "units": [unit(-1, [st(-1, 140, 88, 225, "high")])]}, "INVALID_PAYLOAD"),
-    ({"version": "R-BPBC-1", "raw_counts": r4b_counts(1),
+    ({"version": "R-BPBC-3", "raw_counts": r4b_counts(1),
       "units": [unit(-1, [st(-1, 140, 88, 225, 100)], pi=1.5, ps=dict(PS))]}, "INVALID_PAYLOAD"),
-    ({"version": "R-BPBC-1", "raw_counts": r4b_counts(2),
+    ({"version": "R-BPBC-3", "raw_counts": r4b_counts(2),
       "units": [unit(-1, [st(-1, 140, 88, 225, 100)]), unit(-5, [st(-5, 140, 88, 225, 100)])]},
      "INVALID_CHRONOLOGY"),                                      # never reordered
-    ({"version": "R-BPBC-1", "raw_counts": r4b_counts(1),
+    ({"version": "R-BPBC-3", "raw_counts": r4b_counts(1),
       "units": [unit(0, [st(0, 140, 88, 225, 100)])]}, "INVALID_CHRONOLOGY"),
 ])
 def test_G_malformed_block_is_200_global_fallback(block, reason):
@@ -344,7 +345,7 @@ def test_unknown_keys_are_forbidden(name, mutate):
 def test_precheck_precedence():
     assert W.precheck("x") == "INVALID_PAYLOAD"
     assert W.precheck({"version": "R-BPBC-9", "patientId": 1}) == "UNSUPPORTED_VERSION"
-    assert W.precheck({"version": "R-BPBC-1", "patientId": 1}) == "INVALID_PAYLOAD"
+    assert W.precheck({"version": "R-BPBC-3", "patientId": 1}) == "INVALID_PAYLOAD"
     assert W.precheck(r4b_ev(hist(STABLE))) is None
     assert W.precheck(ev(hist(STABLE))) is None                      # R4C subset counts accepted
     assert W.RAW_COUNTS_GROUP_KEYS["clinical"] >= set(counts()["clinical"])
@@ -370,7 +371,7 @@ def test_block_passed_to_engine_unchanged(monkeypatch):
 def _forced(monkeypatch, p_final, p_g=0.3775):
     def fake(current, evidence, evaluate, thr):
         return E.PersonalizationResult(
-            version="R-BPBC-1", status="INDIVIDUALIZED", reason=None,
+            version="R-BPBC-3", status="INDIVIDUALIZED", reason=None,
             global_risk_score=p_g, final_risk_score=p_final,
             final_risk_level=E.risk_level(p_final, thr),
             conditioned_risk_score=p_final, Q=0.5, gamma=1.0, delta_logit=-0.1,

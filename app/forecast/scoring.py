@@ -1,6 +1,6 @@
 """NEW S2C — pure forecast scoring math (no I/O, no persistence, no logging).
 
-For each SIMULATED 12-feature target state:
+For each SIMULATED 11-feature target state:
 
     p_g     = unrounded GLOBAL Skorp probability (same path as /predict and R)
     p_final = p_g                                         (no adjustment → GLOBAL)

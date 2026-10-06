@@ -1,4 +1,4 @@
-"""NEW R (R4C) — pure, deterministic patient-personalization engine (R-BPBC-1).
+"""NEW R (R4C) — pure, deterministic patient-personalization engine (R-BPBC-3).
 
     p_g      = f_theta(x_t)                                   (unrounded, global Skorp)
     clinical : per conditioned feature, a local-level filter over the patient's
@@ -132,12 +132,12 @@ class _Unit:
 
 
 _RAW_COUNT_KEYS = {
-    "clinical": ("rawRecords", "excludedInvalid", "excludedOutOfDomain",
+    "clinical": ("rawRecords", "excludedUnmeasuredClinicalTime", "excludedInvalid", "excludedOutOfDomain",
                  "excludedAmbiguousTimestamp", "excludedDuplicateOfAnchor"),
     "prediction": ("excludedVersion", "excludedMissingGlobalScore",
                    "excludedRecordNotEffective", "ambiguousGroups", "canonicalUnits"),
 }
-_PI_STATE_KEYS = ("age", "currentSmoker", "cigsPerDay", "BPMeds", "diabetes", "BMI", "heartRate", "sexUsed")
+_PI_STATE_KEYS = ("age", "currentSmoker", "cigsPerDay", "BPMeds", "diabetes", "BMI", "sexUsed")
 
 
 def _parse_evidence(ev: Mapping[str, Any]) -> tuple[list[_Unit], dict[str, dict[str, int]]]:
@@ -372,7 +372,7 @@ def personalize(
     evaluate: Evaluate,
     risk_thresholds: Mapping[str, float],
 ) -> PersonalizationResult:
-    """`current`: the 12 PredictRequest-named inputs of the anchor.
+    """`current`: the 11 PredictRequest-named inputs of the anchor.
     `evidence`: the R4B personalization block. `evaluate(x)`: unrounded
     deployed-Skorp probability for PredictRequest-named inputs."""
     if not is_valid_model_input(current):
@@ -450,16 +450,15 @@ def personalize(
         # ── Prediction-history channel → gamma ───────────────────────────────
         L_g = clamped_logit(p_g)
         grads: dict[str, tuple[float, str]] = {}
-        for k in (*C.CONDITIONED_FEATURES, "BMI", "heartRate"):
+        for k in (*C.CONDITIONED_FEATURES, "BMI"):
             grads[k] = gradient(evaluate, x_t, k, L_g)
         sigma_exp_sq = sum(grads[k][0] ** 2 * _r_hat(k, x_t[k]) for k in C.CONDITIONED_FEATURES)
         drift_rate = sum(grads[k][0] ** 2 * _q_hat(k, x_t[k]) for k in C.CONDITIONED_FEATURES)
-        g_bmi, g_hr = grads["BMI"][0], grads["heartRate"][0]
+        g_bmi = grads["BMI"][0]
         terms = []
         for a, b in comparable:
             d = (clamped_logit(b.pi) - clamped_logit(a.pi)
-                 - (g_bmi * (b.pi_state["BMI"] - a.pi_state["BMI"])
-                    + g_hr * (b.pi_state["heartRate"] - a.pi_state["heartRate"])))
+                 - g_bmi * (b.pi_state["BMI"] - a.pi_state["BMI"]))
             dt = b.t_days - a.t_days
             if dt < 0:
                 raise PersonalizationError(C.Reason.INVALID_CHRONOLOGY, "Π time")

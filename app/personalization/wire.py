@@ -1,4 +1,4 @@
-"""NEW R (R4D) — /predict adapter for the frozen R4C engine (R-BPBC-1).
+"""NEW R (R4D) — /predict adapter for the frozen R4C engine (R-BPBC-3).
 
 Responsibilities (and nothing else):
   * strict wire validation of the optional `personalization` block BEFORE the
@@ -50,7 +50,7 @@ TOP_LEVEL_KEYS = frozenset({"version", "raw_counts", "units"})
 RAW_COUNTS_KEYS = frozenset({"clinical", "prediction"})
 RAW_COUNTS_GROUP_KEYS = {
     "clinical": frozenset({
-        "rawRecords", "droppedOutOfScope", "excludedInvalid", "excludedOutOfDomain",
+        "rawRecords", "droppedOutOfScope", "excludedUnmeasuredClinicalTime", "excludedInvalid", "excludedOutOfDomain",
         "excludedAmbiguousTimestamp", "excludedDuplicateOfAnchor",
         "sameTimestampCollapsed", "burstCollapsedDuplicates", "effectiveUnits",
     }),
@@ -64,7 +64,7 @@ UNIT_KEYS = frozenset({"t_days", "states", "pi", "pi_state"})
 STATE_KEYS = frozenset({"t_days", *C.CONDITIONED_FEATURES})
 PI_KEYS = frozenset({"score"})
 PI_STATE_KEYS = frozenset({"age", "currentSmoker", "cigsPerDay", "BPMeds",
-                           "diabetes", "BMI", "heartRate", "sexUsed"})
+                           "diabetes", "BMI", "sexUsed"})
 
 PER_FEATURE_EXPOSED = ("z", "s", "K_anchor", "K_anchor_prime")
 _NUMERIC_FIELDS = ("Q", "gamma", "delta_logit", "raw_adjustment", "applied_logit", "sigma_exp")
@@ -107,7 +107,7 @@ def _has_unknown_keys(block: Mapping[str, Any]) -> bool:
 
 def precheck(block: Any) -> Optional[str]:
     """Deterministic precedence: not an object → INVALID_PAYLOAD; then
-    version ≠ R-BPBC-1 (incl. missing) → UNSUPPORTED_VERSION; then any
+    version ≠ R-BPBC-3 (incl. missing) → UNSUPPORTED_VERSION; then any
     unknown key → INVALID_PAYLOAD. None = hand over to the engine."""
     if not isinstance(block, Mapping):
         return C.Reason.INVALID_PAYLOAD
@@ -185,7 +185,7 @@ def _attempt(predictor, current: Mapping[str, Any], block: Any,
     if reason is not None:
         return _global_block(C.GLOBAL_ERROR_FALLBACK, reason, risk_score, risk_level)
     if not is_valid_model_input(current):
-        # Passed PredictRequest (12-field ranges) but violates the engine's
+        # Passed PredictRequest (11-field ranges) but violates the engine's
         # cross-feature contract (diaBP < sysBP). The GLOBAL result is still
         # returned top-level exactly as today; personalization is refused.
         return _global_block(C.GLOBAL_ERROR_FALLBACK, C.Reason.CURRENT_INPUT_INVALID, risk_score, risk_level)
@@ -197,7 +197,7 @@ def _attempt(predictor, current: Mapping[str, Any], block: Any,
 def personalization_block(predictor, current: Mapping[str, Any], block: Any,
                           risk_score: float, risk_level: str) -> dict[str, Any]:
     """PHASE B of /predict. Precondition: PHASE A already produced the valid
-    GLOBAL result (`risk_score` / `risk_level`). `current` = the 12 validated
+    GLOBAL result (`risk_score` / `risk_level`). `current` = the 11 validated
     core inputs. Never raises for a personalization-only failure: the GLOBAL
     result is preserved as GLOBAL_ERROR_FALLBACK with a stable reason."""
     t0 = time.perf_counter()

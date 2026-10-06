@@ -27,7 +27,7 @@ client = TestClient(M.app)
 client_nr = TestClient(M.app, raise_server_exceptions=False)
 PRED = M._predictor
 XT = dict(age=58, sex=1, currentSmoker=1, cigsPerDay=15, BPMeds=0, diabetes=0,
-          totChol=240.0, sysBP=165.0, diaBP=95.0, BMI=28.0, heartRate=78, glucose=110.0)
+          totChol=240.0, sysBP=165.0, diaBP=95.0, BMI=28.0, glucose=110.0)
 
 below = lambda x: math.nextafter(x, -math.inf)
 above = lambda x: math.nextafter(x, math.inf)
@@ -100,8 +100,8 @@ def test_predict_classifies_unrounded_then_rounds(monkeypatch, p, score, level):
 @pytest.mark.parametrize("p,score,level", [(0.349996, 0.35, "moderate"), (0.199996, 0.2, "low"), (0.35, 0.35, "high")])
 def test_personalized_fallback_uses_same_unrounded_level(monkeypatch, p, score, level):
     _force_proba(monkeypatch, p)
-    block = {"version": "R-BPBC-1", "units": [],
-             "raw_counts": {"clinical": {"rawRecords": 0, "excludedInvalid": 0, "excludedOutOfDomain": 0,
+    block = {"version": "R-BPBC-3", "units": [],
+             "raw_counts": {"clinical": {"rawRecords": 0, "excludedInvalid": 0, "excludedOutOfDomain": 0, "excludedUnmeasuredClinicalTime": 0,
                                          "excludedAmbiguousTimestamp": 0, "excludedDuplicateOfAnchor": 0},
                             "prediction": {"excludedVersion": 0, "excludedMissingGlobalScore": 0,
                                            "excludedRecordNotEffective": 0, "ambiguousGroups": 0, "canonicalUnits": 0}}}

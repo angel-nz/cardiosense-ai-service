@@ -1,7 +1,7 @@
 """NEW R (R4C) — the ONE canonical module for the frozen personalization
 contract constants.
 
-personalizationVersion "R-BPBC-1", parameter set "R-BPBC-1 / 2026-10-02 final"
+personalizationVersion "R-BPBC-3", parameter set "R-BPBC-3 / 2026-10-05 measuredAt-causal-ordering"
 (NEW R3 + R3-FIX1 + R3-FIX2 + R3-FIX3).
 
 r_k are versioned OBSERVATION-VARIABILITY PROXIES used by the patient-state
@@ -16,14 +16,15 @@ filter — NOT pure instrument measurement error:
     held as natural-log variance ln(1 + CV_I^2). Biological variation only.
 
 Every other constant here (q_k, P_floor, change guard, gamma mapping, B,
-minimums, finite-difference steps) is an ENGINEERING / safety parameter of
-R-BPBC-1, not a clinical constant.
+minimums, finite-difference steps) is an ENGINEERING / safety parameter. PRE-T-R1
+changes none of their numerical values; only the R causal-time contract changed.
+They remain non-clinical constants.
 """
 import math
 from typing import Literal, get_args
 
-PERSONALIZATION_VERSION = "R-BPBC-1"
-PARAMETER_SET = "R-BPBC-1 / 2026-10-02 final"
+PERSONALIZATION_VERSION = "R-BPBC-3"
+PARAMETER_SET = "R-BPBC-3 / 2026-10-05 measuredAt-causal-ordering"
 
 # The only four conditioned features, in a fixed canonical order.
 CONDITIONED_FEATURES = ("sysBP", "diaBP", "totChol", "glucose")
@@ -63,7 +64,7 @@ GAMMA_Q_ZERO = 4.0                                  # Q >= 4 → gamma 0   (gamm
 B_LOGIT = 0.30
 
 # Local finite-difference steps for logit(f(x)) at the current input.
-FD_STEPS = {"sysBP": 1.0, "diaBP": 1.0, "totChol": 1.0, "glucose": 1.0, "BMI": 0.1, "heartRate": 1.0}
+FD_STEPS = {"sysBP": 1.0, "diaBP": 1.0, "totChol": 1.0, "glucose": 1.0, "BMI": 0.1}
 
 # Status values — EXACTLY the backend Prisma enum PersonalizationStatus
 # (R3 / R4A). One vocabulary end to end: no aliases, no shortened forms, no

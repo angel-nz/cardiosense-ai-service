@@ -1,4 +1,4 @@
-"""NEW R (R4C) — pure personalization engine (R-BPBC-1) tests.
+"""NEW R (R4C) — pure personalization engine (R-BPBC-3) tests.
 
 Uses the real deployed Skorp artifact. These are contract / mathematical tests,
 NOT clinical-accuracy tests.
@@ -20,10 +20,10 @@ THR = PRED.risk_thresholds
 F = PRED.global_probability_unrounded
 
 XT = dict(age=58, sex=1, currentSmoker=1, cigsPerDay=15, BPMeds=0, diabetes=0,
-          totChol=240.0, sysBP=165.0, diaBP=95.0, BMI=28.0, heartRate=78, glucose=110.0)
-PS = dict(age=58, currentSmoker=1, cigsPerDay=15, BPMeds=0, diabetes=0, BMI=28.0, heartRate=78, sexUsed=1)
+          totChol=240.0, sysBP=165.0, diaBP=95.0, BMI=28.0, glucose=110.0)
+PS = dict(age=58, currentSmoker=1, cigsPerDay=15, BPMeds=0, diabetes=0, BMI=28.0, sexUsed=1)
 ZERO_COUNTS = {
-    "clinical": {"rawRecords": 0, "excludedInvalid": 0, "excludedOutOfDomain": 0,
+    "clinical": {"rawRecords": 0, "excludedUnmeasuredClinicalTime": 0, "excludedInvalid": 0, "excludedOutOfDomain": 0,
                  "excludedAmbiguousTimestamp": 0, "excludedDuplicateOfAnchor": 0},
     "prediction": {"excludedVersion": 0, "excludedMissingGlobalScore": 0,
                    "excludedRecordNotEffective": 0, "ambiguousGroups": 0, "canonicalUnits": 0},
@@ -75,8 +75,8 @@ def parsed_units(units):
 
 # ═══ parameters ══════════════════════════════════════════════════════════════
 def test_frozen_parameters():
-    assert C.PERSONALIZATION_VERSION == "R-BPBC-1"
-    assert C.PARAMETER_SET == "R-BPBC-1 / 2026-10-02 final"
+    assert C.PERSONALIZATION_VERSION == "R-BPBC-3"
+    assert C.PARAMETER_SET == "R-BPBC-3 / 2026-10-05 measuredAt-causal-ordering"
     assert C.CONDITIONED_FEATURES == ("sysBP", "diaBP", "totChol", "glucose")
     assert C.CV_I == {"totChol": 0.053, "glucose": 0.047}
     assert C.R["sysBP"] == 182.25 and C.R["diaBP"] == 59.29
@@ -93,7 +93,7 @@ def test_frozen_parameters():
     assert (C.PI_CLAMP_LO, C.PI_CLAMP_HI) == (0.00005, 0.99995)
     assert C.B_LOGIT == 0.30 and C.GUARD_START == 2.0
     assert (C.MIN_PI_UNITS, C.MIN_COMPARABLE_TRANSITIONS) == (3, 2)
-    assert C.FD_STEPS == {"sysBP": 1.0, "diaBP": 1.0, "totChol": 1.0, "glucose": 1.0, "BMI": 0.1, "heartRate": 1.0}
+    assert C.FD_STEPS == {"sysBP": 1.0, "diaBP": 1.0, "totChol": 1.0, "glucose": 1.0, "BMI": 0.1}
     assert THR == {"low_max": 0.2, "moderate_max": 0.35}           # artifact thresholds unchanged
     assert not hasattr(C, "K_MIN")                                  # no explicit K_min exists
 
@@ -290,19 +290,19 @@ def test_changed_covariate_breaks_comparability(field, new):
     assert res.status == C.GLOBAL_INSUFFICIENT_HISTORY and res.reason == C.Reason.COMPARABLE_TRANSITIONS_INSUFFICIENT
 
 
-def test_bmi_hr_changes_keep_comparability_and_apply_correction():
+def test_bmi_changes_keep_comparability_and_apply_correction():
     us = hist(STABLE)
-    us[1]["pi_state"] = dict(us[1]["pi_state"], BMI=29.0, heartRate=85)
+    us[1]["pi_state"] = dict(us[1]["pi_state"], BMI=29.0)
     res = run(XT, ev(us))
     assert res.status == C.INDIVIDUALIZED and res.comparable_transitions == 3
-    g_bmi, g_hr = res.gradients["BMI"]["g"], res.gradients["heartRate"]["g"]
+    g_bmi = res.gradients["BMI"]["g"]
     # recompute Q by hand from the frozen equations
     s2 = res.sigma_exp ** 2
     drift = sum(res.gradients[k]["g"] ** 2 * E._q_hat(k, XT[k]) for k in C.CONDITIONED_FEATURES)
     terms = []
     for a, b in zip(us, us[1:]):
         d = (E.clamped_logit(b["pi"]["score"]) - E.clamped_logit(a["pi"]["score"])
-             - (g_bmi * (b["pi_state"]["BMI"] - a["pi_state"]["BMI"]) + g_hr * (b["pi_state"]["heartRate"] - a["pi_state"]["heartRate"])))
+             - g_bmi * (b["pi_state"]["BMI"] - a["pi_state"]["BMI"]))
         v = 2 * s2 + drift * (b["t_days"] - a["t_days"]) + E.quantization_variance(a["pi"]["score"]) + E.quantization_variance(b["pi"]["score"])
         terms.append(d * d / v)
     assert res.Q == pytest.approx(sum(terms) / 3, rel=1e-12)
@@ -360,7 +360,7 @@ def test_bound_applied_and_probability_range():
     (ev(hist(STABLE[:2], ts=(-14, -7)), counts(rawRecords=5, ambiguousGroups=2)), C.GLOBAL_INCOMPATIBLE_HISTORY),
     (ev(hist(STABLE, ps=dict(PS, sexUsed=None))), C.GLOBAL_INCOMPATIBLE_HISTORY),
     (dict(ev(hist(STABLE)), version="R-BPBC-0"), C.GLOBAL_ERROR_FALLBACK),
-    ({"version": "R-BPBC-1", "units": "x"}, C.GLOBAL_ERROR_FALLBACK),
+    ({"version": "R-BPBC-3", "units": "x"}, C.GLOBAL_ERROR_FALLBACK),
     (ev([unit(-1.0, [st(2.0, 140, 88, 220, 100)])]), C.GLOBAL_ERROR_FALLBACK),     # future state
     (ev([unit(-7.0, [st(-7.0, 140, 88, 220, 100)]), unit(-14.0, [st(-14.0, 140, 88, 220, 100)])]), C.GLOBAL_ERROR_FALLBACK),
     (None, C.GLOBAL_ERROR_FALLBACK),
@@ -460,7 +460,7 @@ def test_status_vocabulary_is_exactly_the_prisma_enum():
     assert C.PERSONALIZATION_STATUSES == EXACT
     assert (C.INDIVIDUALIZED, C.GLOBAL_INSUFFICIENT_HISTORY, C.GLOBAL_INCOMPATIBLE_HISTORY, C.GLOBAL_ERROR_FALLBACK) == EXACT
     with pytest.raises(ValueError):
-        E.PersonalizationResult("R-BPBC-1", "INSUFFICIENT", None, 0.1, 0.1, "low")   # shorthand rejected
+        E.PersonalizationResult("R-BPBC-3", "INSUFFICIENT", None, 0.1, 0.1, "low")   # shorthand rejected
 
 
 def _gradient_undefined(monkeypatch):

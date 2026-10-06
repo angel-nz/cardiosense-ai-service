@@ -9,7 +9,7 @@ from app.schemas import PredictRequest
 
 
 class ForecastTarget(PredictRequest):
-    """One SIMULATED 12-feature state: exactly the PredictRequest fields and
+    """One SIMULATED 11-feature state: exactly the PredictRequest fields and
     validation; any other key (ids, history, …) is rejected."""
     model_config = ConfigDict(extra="forbid")
 

@@ -10,10 +10,10 @@ from app.schemas import PredictRequest
 
 logger = logging.getLogger("skorp")
 
-# Order matters — must exactly match scripts/train.py FEATURES.
+# Order matters — must exactly match the approved Skorp-Beta-0.2 metadata/training contract.
 FEATURES = [
     "male", "age", "currentSmoker", "cigsPerDay", "BPMeds", "diabetes",
-    "totChol", "sysBP", "diaBP", "BMI", "heartRate", "glucose",
+    "totChol", "sysBP", "diaBP", "BMI", "glucose",
 ]
 
 
@@ -33,7 +33,7 @@ class ModelLoadError(RuntimeError):
 
 
 class SkorpPredictor:
-    """Loads Skorp-Beta-0.1 artifacts once at startup. Never trains, never
+    """Loads Skorp-Beta-0.2 artifacts once at startup. Never trains, never
     silently falls back — if artifacts are missing or invalid this raises
     ModelLoadError and the service should be considered unhealthy/refuse to
     start (see main.py startup handler)."""
@@ -60,8 +60,8 @@ class SkorpPredictor:
         missing = [f for f in required if not (self.artifact_dir / f).exists()]
         if missing:
             raise ModelLoadError(
-                f"Missing Skorp-Beta-0.1 artifacts in {self.artifact_dir}: {missing}. "
-                f"Run scripts/train.py first — the AI Service does not train at startup."
+                f"Missing Skorp-Beta-0.2 artifacts in {self.artifact_dir}: {missing}. "
+                f"Approved Skorp-Beta-0.2 artifacts must be present; the AI Service does not train at startup."
             )
         try:
             self.classifier = joblib.load(self.artifact_dir / "classifier.joblib")
@@ -74,7 +74,7 @@ class SkorpPredictor:
             with open(self.artifact_dir / "metadata.json") as f:
                 self.metadata = json.load(f)
         except Exception as exc:  # noqa: BLE001 — re-raise as ModelLoadError
-            raise ModelLoadError(f"Failed to load Skorp-Beta-0.1 artifacts: {exc}") from exc
+            raise ModelLoadError(f"Failed to load Skorp-Beta-0.2 artifacts: {exc}") from exc
 
         if self.metadata.get("model_version") != MODEL_VERSION:
             raise ModelLoadError(
@@ -82,12 +82,30 @@ class SkorpPredictor:
                 f"got {self.metadata.get('model_version')!r}"
             )
 
-        top6 = fi.get("top_6") or {}
-        if any(v is None for v in top6.values()):
-            logger.warning("feature_importance.json has N/A values — permutation importance was non-positive at training time")
-            self.feature_importance = {}
-        else:
-            self.feature_importance = {k: float(v) for k, v in top6.items()}
+        metadata_features = self.metadata.get("features")
+        if metadata_features != FEATURES:
+            raise ModelLoadError(
+                f"Artifact feature contract mismatch: expected {FEATURES}, got {metadata_features!r}"
+            )
+        for name, artifact in (("classifier", self.classifier), ("anomaly imputer", self.imputer), ("anomaly model", self.anomaly_model)):
+            feature_names = list(getattr(artifact, "feature_names_in_", []))
+            if feature_names != FEATURES:
+                raise ModelLoadError(
+                    f"{name} feature contract mismatch: expected {FEATURES}, got {feature_names}"
+                )
+
+        rows = fi.get("features")
+        if not isinstance(rows, list):
+            raise ModelLoadError("feature_importance.json missing features list")
+        try:
+            parsed = {str(row["feature"]): float(row["importance_percent"]) for row in rows}
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ModelLoadError(f"Invalid feature_importance.json: {exc}") from exc
+        if list(parsed) != FEATURES or set(parsed) != set(FEATURES):
+            raise ModelLoadError(
+                f"Feature-importance contract mismatch: expected {FEATURES}, got {list(parsed)}"
+            )
+        self.feature_importance = parsed
 
         self.training_age_range = _read_age_range(self.metadata, "training_age_range")
         self.eligible_age_range = _read_age_range(self.metadata, "eligible_age_range")
@@ -95,7 +113,7 @@ class SkorpPredictor:
             logger.warning("metadata.json has no valid eligible_age_range — consumers must treat eligibility as unknown")
 
         self.loaded = True
-        logger.info("Skorp-Beta-0.1 artifacts loaded from %s", self.artifact_dir)
+        logger.info("Skorp-Beta-0.2 artifacts loaded from %s", self.artifact_dir)
 
     def risk_level(self, score: float) -> str:
         """Canonical CardioSense classification of an UNROUNDED probability:
@@ -126,12 +144,13 @@ class SkorpPredictor:
             "sysBP": features["sysBP"],
             "diaBP": features["diaBP"],
             "BMI": features["BMI"],
-            "heartRate": features["heartRate"],
             "glucose": features["glucose"],
         }
 
-    def _imputed(self, features) -> pd.DataFrame:
-        X = pd.DataFrame([self._model_row(features)], columns=FEATURES)
+    def _frame(self, features) -> pd.DataFrame:
+        return pd.DataFrame([self._model_row(features)], columns=FEATURES)
+
+    def _imputed_for_anomaly(self, X: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame(self.imputer.transform(X), columns=FEATURES)
 
     def global_probability_unrounded(self, features) -> float:
@@ -140,14 +159,15 @@ class SkorpPredictor:
         This is the exact value /predict rounds to 4 decimals for risk_score;
         the personalization engine needs it unrounded. Never derived from a
         persisted/rounded score."""
-        proba = float(self.classifier.predict_proba(self._imputed(features))[0, 1])
+        proba = float(self.classifier.predict_proba(self._frame(features))[0, 1])
         return min(max(proba, 0.0), 1.0)
 
     def predict(self, req: PredictRequest) -> dict:
         features = req.model_dump()
-        X_imp = self._imputed(features)
+        X = self._frame(features)
+        X_imp = self._imputed_for_anomaly(X)
 
-        proba = float(self.classifier.predict_proba(X_imp)[0, 1])
+        proba = float(self.classifier.predict_proba(X)[0, 1])
         risk_score = min(max(proba, 0.0), 1.0)
         level = self.risk_level(risk_score)
 

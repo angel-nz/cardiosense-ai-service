@@ -26,7 +26,7 @@ H = {"X-Internal-Key": "internal-dev-key"}
 client = TestClient(M.app)
 client_nr = TestClient(M.app, raise_server_exceptions=False)
 PRED = M._predictor
-MV = "Skorp-Beta-0.1"
+MV = "Skorp-Beta-0.2"
 
 
 def fs(targets, adj=None, version=MV, c=client, **extra):
@@ -38,10 +38,10 @@ def fs(targets, adj=None, version=MV, c=client, **extra):
 
 def rand_state(rng):
     sys_ = rng.uniform(95, 210)
-    return dict(age=rng.randint(32, 70), sex=rng.randint(0, 1), currentSmoker=(s := rng.randint(0, 1)),
+    return dict(age=rng.randint(32, 81), sex=rng.randint(0, 1), currentSmoker=(s := rng.randint(0, 1)),
                 cigsPerDay=rng.randint(1, 40) if s else 0, BPMeds=rng.randint(0, 1), diabetes=rng.randint(0, 1),
                 totChol=round(rng.uniform(150, 350), 2), sysBP=round(sys_, 2), diaBP=round(rng.uniform(55, sys_ - 5), 2),
-                BMI=round(rng.uniform(18, 42), 2), heartRate=rng.randint(50, 110), glucose=round(rng.uniform(65, 260), 2))
+                BMI=round(rng.uniform(18, 42), 2), glucose=round(rng.uniform(65, 260), 2))
 
 
 # ── FS1 / global equivalence ───────────────────────────────────────────────
@@ -120,7 +120,7 @@ def test_FS3_level_from_unrounded_final_with_adjustment(monkeypatch):
 
 # ── FS4 – FS6 rejections ─────────────────────────────────────────────────
 def test_FS4_model_version_mismatch_409():
-    r = fs([XT], version="Skorp-Beta-0.2")
+    r = fs([XT], version="Skorp-Beta-0.1")
     assert r.status_code == 409 and r.json()["detail"]["code"] == "MODEL_VERSION_MISMATCH"
 
 

@@ -61,6 +61,9 @@ logs/
 Thumbs.db
 desktop.ini
 
+# Dataset
+*.csv
+
 # Secrets / credentials
 *.pem
 *.key

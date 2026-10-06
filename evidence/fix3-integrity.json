@@ -1,0 +1,335 @@
+{
+  "status": "PASS",
+  "scope": "FIX3 before/after comparison of available files; not historical deployed artifact verification",
+  "candidate_six_files": [
+    {
+      "path": "artifacts/skorp-beta-0.2/anomaly_model.joblib",
+      "before_sha256": "fbaaaae53e6855512df380cac47dc567a7877f539bb384144a63ce7c49ddeb3b",
+      "after_sha256": "fbaaaae53e6855512df380cac47dc567a7877f539bb384144a63ce7c49ddeb3b"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/classifier.joblib",
+      "before_sha256": "78cd20e029bc038d1897417afa6312c3a5cae1284884b3eb852b40e73ec85ef2",
+      "after_sha256": "78cd20e029bc038d1897417afa6312c3a5cae1284884b3eb852b40e73ec85ef2"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/feature_importance.csv",
+      "before_sha256": "218ccdd055f23cbb427622ab392d1e6f3e032c337ca50ed984f1a353536b8761",
+      "after_sha256": "218ccdd055f23cbb427622ab392d1e6f3e032c337ca50ed984f1a353536b8761"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/feature_importance.json",
+      "before_sha256": "1b5884962bd5e1515e6f7cfb43262a2f2fc77dc87e47123a0b20bd2fcc284a77",
+      "after_sha256": "1b5884962bd5e1515e6f7cfb43262a2f2fc77dc87e47123a0b20bd2fcc284a77"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/imputer.joblib",
+      "before_sha256": "29ce8fe0a61575996ae40514f6a09508ccf0d6c07eeab429de0b5705df1ed47b",
+      "after_sha256": "29ce8fe0a61575996ae40514f6a09508ccf0d6c07eeab429de0b5705df1ed47b"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/test_predictions.csv",
+      "before_sha256": "3de71eb9af91c50e0cf352cf07789e0bfb3dc32b9e98703182cf735c99b43b81",
+      "after_sha256": "3de71eb9af91c50e0cf352cf07789e0bfb3dc32b9e98703182cf735c99b43b81"
+    }
+  ],
+  "experimental_baseline12_files": [
+    {
+      "path": "artifacts/skorp-beta-0.1/anomaly_model.joblib",
+      "before_sha256": "605efcb125a2421f406032dc44f21bcc274aa2cf22d918b660dfbfe137714584",
+      "after_sha256": "605efcb125a2421f406032dc44f21bcc274aa2cf22d918b660dfbfe137714584"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.1/classifier.joblib",
+      "before_sha256": "bc63cf70d12de2100abe7b81ce50463e9cf149579f6d27609a12ab16adc3b24b",
+      "after_sha256": "bc63cf70d12de2100abe7b81ce50463e9cf149579f6d27609a12ab16adc3b24b"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.1/feature_importance.json",
+      "before_sha256": "52358967398745dca480c5177c8b73c9706ee08f3f4e999763884876fcd76832",
+      "after_sha256": "52358967398745dca480c5177c8b73c9706ee08f3f4e999763884876fcd76832"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.1/imputer.joblib",
+      "before_sha256": "291575df9c18387286c225112254265bef738ca6c430cafb71ee9b2c3fc2b4e7",
+      "after_sha256": "291575df9c18387286c225112254265bef738ca6c430cafb71ee9b2c3fc2b4e7"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.1/metadata.json",
+      "before_sha256": "bbbcd453040466da95d399ef61bd6daae608219d6b9d3f01ffeecf94bf1b306f",
+      "after_sha256": "bbbcd453040466da95d399ef61bd6daae608219d6b9d3f01ffeecf94bf1b306f"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.1/metrics.json",
+      "before_sha256": "55c513f720c30fc861f06e81a67346043bf42b6623be1d7af6ed3d97ea66c976",
+      "after_sha256": "55c513f720c30fc861f06e81a67346043bf42b6623be1d7af6ed3d97ea66c976"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.1/REPORT.md",
+      "before_sha256": "859502032b74608f13d1c84d5314d80698a5ac9fdb2bc25f3e117774403a6135",
+      "after_sha256": "859502032b74608f13d1c84d5314d80698a5ac9fdb2bc25f3e117774403a6135"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.1/risk_thresholds.json",
+      "before_sha256": "791e3383fedaf189137ba4a5cb4419bc78688dd365e45e494bb10766f35b89eb",
+      "after_sha256": "791e3383fedaf189137ba4a5cb4419bc78688dd365e45e494bb10766f35b89eb"
+    }
+  ],
+  "all_unchanged_files": [
+    {
+      "path": ".env.example",
+      "before_sha256": "b06494fd49adb8a398ea2490d9fd8b341665f644b41471abbf57a8dae06ccda0",
+      "after_sha256": "b06494fd49adb8a398ea2490d9fd8b341665f644b41471abbf57a8dae06ccda0"
+    },
+    {
+      "path": ".gitignore",
+      "before_sha256": "4ddaaf5df24ab67520f85a8734a7d09a9b3fd8d487fd53e9acb3fa89f0229363",
+      "after_sha256": "4ddaaf5df24ab67520f85a8734a7d09a9b3fd8d487fd53e9acb3fa89f0229363"
+    },
+    {
+      "path": "README.md",
+      "before_sha256": "48950a11bea3d57b82df4b49c6d233605a628ebae45ae36aca678d9e8ae8dde3",
+      "after_sha256": "48950a11bea3d57b82df4b49c6d233605a628ebae45ae36aca678d9e8ae8dde3"
+    },
+    {
+      "path": "requirements-pre-t-a.txt",
+      "before_sha256": "c37456504d829f1130254e146fdfbfee07303a63d11186932502c236cdded3db",
+      "after_sha256": "c37456504d829f1130254e146fdfbfee07303a63d11186932502c236cdded3db"
+    },
+    {
+      "path": "requirements.txt",
+      "before_sha256": "76f93558f9328f7ce57705c5d497b308f9e3ccc78e51f717d6bf449af8508724",
+      "after_sha256": "76f93558f9328f7ce57705c5d497b308f9e3ccc78e51f717d6bf449af8508724"
+    },
+    {
+      "path": "app/__init__.py",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "app/config.py",
+      "before_sha256": "c940b224ae4d683e7552ea5eb15cb45d2eeb257115e6aa0eeb054db83d0be1da",
+      "after_sha256": "c940b224ae4d683e7552ea5eb15cb45d2eeb257115e6aa0eeb054db83d0be1da"
+    },
+    {
+      "path": "app/inference.py",
+      "before_sha256": "9ba3a49cf99915b4a4cf3d2ddf3b63c3a982f5d40422691032150b511f52cfd0",
+      "after_sha256": "9ba3a49cf99915b4a4cf3d2ddf3b63c3a982f5d40422691032150b511f52cfd0"
+    },
+    {
+      "path": "app/main.py",
+      "before_sha256": "a283dc466182acb12a0cd3deaa9f5c8677f8ef31ab72d21e9dedc9af52186740",
+      "after_sha256": "a283dc466182acb12a0cd3deaa9f5c8677f8ef31ab72d21e9dedc9af52186740"
+    },
+    {
+      "path": "app/schemas.py",
+      "before_sha256": "979b7a95f497a7e50fd628c681640a4b9b7f98eb45a74b7ed454982aaec5c856",
+      "after_sha256": "979b7a95f497a7e50fd628c681640a4b9b7f98eb45a74b7ed454982aaec5c856"
+    },
+    {
+      "path": "app/security.py",
+      "before_sha256": "e1f24f138b48498516e9ae55abdc8dc9c6d4e4b48c22b006449f7fe30f7db543",
+      "after_sha256": "e1f24f138b48498516e9ae55abdc8dc9c6d4e4b48c22b006449f7fe30f7db543"
+    },
+    {
+      "path": "app/forecast/__init__.py",
+      "before_sha256": "c4caaa17f2cf9bdcc2116ae3095f36cc071ed304103ba5cd191b0fa411f59565",
+      "after_sha256": "c4caaa17f2cf9bdcc2116ae3095f36cc071ed304103ba5cd191b0fa411f59565"
+    },
+    {
+      "path": "app/forecast/router.py",
+      "before_sha256": "ea3ce9de7b8796e265a575323070da9b9d9064d29910197b7cddd7627de4394c",
+      "after_sha256": "ea3ce9de7b8796e265a575323070da9b9d9064d29910197b7cddd7627de4394c"
+    },
+    {
+      "path": "app/forecast/schemas.py",
+      "before_sha256": "b18a18e243db26dafbe6456227d7b12f639fb35ed128cee2b2ec75f847a79d9a",
+      "after_sha256": "b18a18e243db26dafbe6456227d7b12f639fb35ed128cee2b2ec75f847a79d9a"
+    },
+    {
+      "path": "app/forecast/scoring.py",
+      "before_sha256": "54070fd313ef224e1878737228e713ad15d5112f1675fbbee0ed8272248fce32",
+      "after_sha256": "54070fd313ef224e1878737228e713ad15d5112f1675fbbee0ed8272248fce32"
+    },
+    {
+      "path": "app/personalization/__init__.py",
+      "before_sha256": "ae2832efdfa872657ca27c5a96b1b8eed67b8407772f6319b63d3518e3ede19d",
+      "after_sha256": "ae2832efdfa872657ca27c5a96b1b8eed67b8407772f6319b63d3518e3ede19d"
+    },
+    {
+      "path": "app/personalization/constants.py",
+      "before_sha256": "90373005ba35e2f2bd8ea8f1bf822b39eaf34ef7f1981f22645381ed0cd35c13",
+      "after_sha256": "90373005ba35e2f2bd8ea8f1bf822b39eaf34ef7f1981f22645381ed0cd35c13"
+    },
+    {
+      "path": "app/personalization/engine.py",
+      "before_sha256": "a048f7baf7a42a4260c87e26c4c3cf68caf2ae0b1759e2a916cb1a32ee7b1b08",
+      "after_sha256": "a048f7baf7a42a4260c87e26c4c3cf68caf2ae0b1759e2a916cb1a32ee7b1b08"
+    },
+    {
+      "path": "app/personalization/wire.py",
+      "before_sha256": "31c3e03519592221676559b07901e336ea3d56008c49721ba81904f77e55499e",
+      "after_sha256": "31c3e03519592221676559b07901e336ea3d56008c49721ba81904f77e55499e"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.1/anomaly_model.joblib",
+      "before_sha256": "605efcb125a2421f406032dc44f21bcc274aa2cf22d918b660dfbfe137714584",
+      "after_sha256": "605efcb125a2421f406032dc44f21bcc274aa2cf22d918b660dfbfe137714584"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.1/classifier.joblib",
+      "before_sha256": "bc63cf70d12de2100abe7b81ce50463e9cf149579f6d27609a12ab16adc3b24b",
+      "after_sha256": "bc63cf70d12de2100abe7b81ce50463e9cf149579f6d27609a12ab16adc3b24b"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.1/feature_importance.json",
+      "before_sha256": "52358967398745dca480c5177c8b73c9706ee08f3f4e999763884876fcd76832",
+      "after_sha256": "52358967398745dca480c5177c8b73c9706ee08f3f4e999763884876fcd76832"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.1/imputer.joblib",
+      "before_sha256": "291575df9c18387286c225112254265bef738ca6c430cafb71ee9b2c3fc2b4e7",
+      "after_sha256": "291575df9c18387286c225112254265bef738ca6c430cafb71ee9b2c3fc2b4e7"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.1/metadata.json",
+      "before_sha256": "bbbcd453040466da95d399ef61bd6daae608219d6b9d3f01ffeecf94bf1b306f",
+      "after_sha256": "bbbcd453040466da95d399ef61bd6daae608219d6b9d3f01ffeecf94bf1b306f"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.1/metrics.json",
+      "before_sha256": "55c513f720c30fc861f06e81a67346043bf42b6623be1d7af6ed3d97ea66c976",
+      "after_sha256": "55c513f720c30fc861f06e81a67346043bf42b6623be1d7af6ed3d97ea66c976"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.1/REPORT.md",
+      "before_sha256": "859502032b74608f13d1c84d5314d80698a5ac9fdb2bc25f3e117774403a6135",
+      "after_sha256": "859502032b74608f13d1c84d5314d80698a5ac9fdb2bc25f3e117774403a6135"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.1/risk_thresholds.json",
+      "before_sha256": "791e3383fedaf189137ba4a5cb4419bc78688dd365e45e494bb10766f35b89eb",
+      "after_sha256": "791e3383fedaf189137ba4a5cb4419bc78688dd365e45e494bb10766f35b89eb"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/anomaly_model.joblib",
+      "before_sha256": "fbaaaae53e6855512df380cac47dc567a7877f539bb384144a63ce7c49ddeb3b",
+      "after_sha256": "fbaaaae53e6855512df380cac47dc567a7877f539bb384144a63ce7c49ddeb3b"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/classifier.joblib",
+      "before_sha256": "78cd20e029bc038d1897417afa6312c3a5cae1284884b3eb852b40e73ec85ef2",
+      "after_sha256": "78cd20e029bc038d1897417afa6312c3a5cae1284884b3eb852b40e73ec85ef2"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/coefficient_diagnostics.json",
+      "before_sha256": "ae8171e42e6147e586adb11e1f01f46306301605d105b1247784df32ae082315",
+      "after_sha256": "ae8171e42e6147e586adb11e1f01f46306301605d105b1247784df32ae082315"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/dataset_audit.json",
+      "before_sha256": "fae1490c5ac9d0f785fa7b85f96193127f423f18ce876696d0ce89c01d584764",
+      "after_sha256": "fae1490c5ac9d0f785fa7b85f96193127f423f18ce876696d0ce89c01d584764"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/feature_importance.csv",
+      "before_sha256": "218ccdd055f23cbb427622ab392d1e6f3e032c337ca50ed984f1a353536b8761",
+      "after_sha256": "218ccdd055f23cbb427622ab392d1e6f3e032c337ca50ed984f1a353536b8761"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/feature_importance.json",
+      "before_sha256": "1b5884962bd5e1515e6f7cfb43262a2f2fc77dc87e47123a0b20bd2fcc284a77",
+      "after_sha256": "1b5884962bd5e1515e6f7cfb43262a2f2fc77dc87e47123a0b20bd2fcc284a77"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/imputer.joblib",
+      "before_sha256": "29ce8fe0a61575996ae40514f6a09508ccf0d6c07eeab429de0b5705df1ed47b",
+      "after_sha256": "29ce8fe0a61575996ae40514f6a09508ccf0d6c07eeab429de0b5705df1ed47b"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/metadata.json",
+      "before_sha256": "29adad34c115fff80a937f07d6e65518ac58047fe344161d7da8bf1272b7f5a3",
+      "after_sha256": "29adad34c115fff80a937f07d6e65518ac58047fe344161d7da8bf1272b7f5a3"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/metrics.json",
+      "before_sha256": "4c6301c31afae965ff7683a983d3aed2e2a9a15da2fb4091aff6b85a10cbce97",
+      "after_sha256": "4c6301c31afae965ff7683a983d3aed2e2a9a15da2fb4091aff6b85a10cbce97"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/risk_thresholds.json",
+      "before_sha256": "791e3383fedaf189137ba4a5cb4419bc78688dd365e45e494bb10766f35b89eb",
+      "after_sha256": "791e3383fedaf189137ba4a5cb4419bc78688dd365e45e494bb10766f35b89eb"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/split_indices.json",
+      "before_sha256": "79c724dc0e7065070be3afcbe3f69293873b746c8f8fb39de37448239dde30ca",
+      "after_sha256": "79c724dc0e7065070be3afcbe3f69293873b746c8f8fb39de37448239dde30ca"
+    },
+    {
+      "path": "artifacts/skorp-beta-0.2/test_predictions.csv",
+      "before_sha256": "3de71eb9af91c50e0cf352cf07789e0bfb3dc32b9e98703182cf735c99b43b81",
+      "after_sha256": "3de71eb9af91c50e0cf352cf07789e0bfb3dc32b9e98703182cf735c99b43b81"
+    },
+    {
+      "path": "data/raw/framingham.csv",
+      "before_sha256": "533fe2625b5aace28c21714cb9ba55ec35cba11177c31ad5d7a20c79101c8e76",
+      "after_sha256": "533fe2625b5aace28c21714cb9ba55ec35cba11177c31ad5d7a20c79101c8e76"
+    },
+    {
+      "path": "scripts/close_pre_t_a_fix1.py",
+      "before_sha256": "1206765cccc29eee562578a5fa4b70dc7be3267f6bf81bf4bf19df2f1a776159",
+      "after_sha256": "1206765cccc29eee562578a5fa4b70dc7be3267f6bf81bf4bf19df2f1a776159"
+    },
+    {
+      "path": "scripts/train_pre_t_a.py",
+      "before_sha256": "eb343d9407031c2b61a6a48a53031851612ed14e7b3a957103c9eaa06af7aaf7",
+      "after_sha256": "eb343d9407031c2b61a6a48a53031851612ed14e7b3a957103c9eaa06af7aaf7"
+    },
+    {
+      "path": "scripts/train.py",
+      "before_sha256": "0f97d2f81aa68ab018d0763dd9c8926a888632dfb3582008c2d9afbd571bd92d",
+      "after_sha256": "0f97d2f81aa68ab018d0763dd9c8926a888632dfb3582008c2d9afbd571bd92d"
+    },
+    {
+      "path": "tests/__init__.py",
+      "before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tests/test_api.py",
+      "before_sha256": "89a70d4c87c028ea6e8a0a4e5b0f8f34227a8831e77b70cbed8402614d1619f6",
+      "after_sha256": "89a70d4c87c028ea6e8a0a4e5b0f8f34227a8831e77b70cbed8402614d1619f6"
+    },
+    {
+      "path": "tests/test_forecast_score.py",
+      "before_sha256": "c18875e32d01bb74818c2f7b7157f6b45a234a388955ecd024602e15de9c06ff",
+      "after_sha256": "c18875e32d01bb74818c2f7b7157f6b45a234a388955ecd024602e15de9c06ff"
+    },
+    {
+      "path": "tests/test_personalization.py",
+      "before_sha256": "8ddb9f28e2f5d545f659133e7a615e112f07a5e68ecfcc650afacca6b2dcd951",
+      "after_sha256": "8ddb9f28e2f5d545f659133e7a615e112f07a5e68ecfcc650afacca6b2dcd951"
+    },
+    {
+      "path": "tests/test_pre_t_a.py",
+      "before_sha256": "ce34592bd10e324e0a0fb46961f23a55928f772d616833c98022f2d1e43da2ee",
+      "after_sha256": "ce34592bd10e324e0a0fb46961f23a55928f772d616833c98022f2d1e43da2ee"
+    },
+    {
+      "path": "tests/test_predict_personalization.py",
+      "before_sha256": "2c6c4f46075fe131127458ccfd696802b389bfc0ae68540942c59dba7ea4527f",
+      "after_sha256": "2c6c4f46075fe131127458ccfd696802b389bfc0ae68540942c59dba7ea4527f"
+    },
+    {
+      "path": "tests/test_risk_thresholds.py",
+      "before_sha256": "1eb63a88b97cc4cbdf93fb830897d978991bf77dabec7762f33a7741fc13ce6d",
+      "after_sha256": "1eb63a88b97cc4cbdf93fb830897d978991bf77dabec7762f33a7741fc13ce6d"
+    },
+    {
+      "path": "tests/test_training.py",
+      "before_sha256": "36f24a2699ba757babb6d6fe859d25e546731843d04e7646a0b22a034e309bb2",
+      "after_sha256": "36f24a2699ba757babb6d6fe859d25e546731843d04e7646a0b22a034e309bb2"
+    }
+  ]
+}

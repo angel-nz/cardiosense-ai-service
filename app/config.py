@@ -24,8 +24,8 @@ AI_SERVICE_KEY = os.environ.get("AI_SERVICE_KEY", "internal-dev-key")
 ARTIFACT_DIR = Path(
     os.environ.get(
         "SKORP_ARTIFACT_DIR",
-        Path(__file__).resolve().parent.parent / "artifacts" / "skorp-beta-0.1",
+        Path(__file__).resolve().parent.parent / "artifacts" / "skorp-beta-0.2",
     )
 )
 
-MODEL_VERSION = "Skorp-Beta-0.1"
+MODEL_VERSION = "Skorp-Beta-0.2"
